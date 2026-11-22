@@ -1,0 +1,14 @@
+export function contaParole(testo: string): Record<string, number> {
+  const parole = testo.match(/[\p{L}\d]+/gu);
+  
+  if (!parole || parole.length === 0) return {};
+  
+  const conteggio: Record<string, number> = {};
+  
+  for (const parola of parole) {
+    const parolaMinuscola = parola.toLowerCase();
+    conteggio[parolaMinuscola] = (conteggio[parolaMinuscola] || 0) + 1;
+  }
+  
+  return conteggio;
+}

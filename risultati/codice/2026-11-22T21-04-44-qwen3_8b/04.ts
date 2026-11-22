@@ -1,0 +1,9 @@
+export function contaParole(testo: string): Record<string, number> {
+  const words = testo.match(/[\p{L}\p{N}]+/gu) || [];
+  const counts: Record<string, number> = {};
+  for (const word of words) {
+    const lowerWord = word.toLowerCase();
+    counts[lowerWord] = (counts[lowerWord] || 0) + 1;
+  }
+  return counts;
+}

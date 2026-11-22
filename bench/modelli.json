@@ -1,0 +1,73 @@
+{
+  "parametri_chiamata": {
+    "temperature": 0,
+    "max_tokens": 8192,
+    "reasoning_effort": "medium"
+  },
+  "prompt_lungo": {
+    "parole": 2800,
+    "seme": 42
+  },
+  "modelli": {
+    "qwen3.5:4b": {
+      "tipo": "ollama",
+      "url": "http://localhost:11434/v1",
+      "id": "qwen3.5:4b",
+      "contesto": 16384,
+      "avvio": "servizio systemd ollama con OLLAMA_CONTEXT_LENGTH=16384 (ambiente effettivo registrato in ogni riga)",
+      "note": "Ollama: reasoning_effort accende il ragionamento (con \"none\" lo spegne); non è verificato che medium sia diverso da low o high per questo modello."
+    },
+    "gemma4:e4b": {
+      "tipo": "ollama",
+      "url": "http://localhost:11434/v1",
+      "id": "gemma4:e4b",
+      "contesto": 16384,
+      "avvio": "servizio systemd ollama con OLLAMA_CONTEXT_LENGTH=16384 (ambiente effettivo registrato in ogni riga)",
+      "note": "Ollama: reasoning_effort accende il ragionamento (con \"none\" lo spegne); non è verificato che medium sia diverso da low o high per questo modello."
+    },
+    "qwen3:8b": {
+      "tipo": "ollama",
+      "url": "http://localhost:11434/v1",
+      "id": "qwen3:8b",
+      "contesto": 16384,
+      "avvio": "servizio systemd ollama con OLLAMA_CONTEXT_LENGTH=16384 (ambiente effettivo registrato in ogni riga)",
+      "note": "Ollama: reasoning_effort accende il ragionamento (con \"none\" lo spegne); non è verificato che medium sia diverso da low o high per questo modello."
+    },
+    "qwen3.5:9b": {
+      "tipo": "ollama",
+      "url": "http://localhost:11434/v1",
+      "id": "qwen3.5:9b",
+      "contesto": 16384,
+      "avvio": "servizio systemd ollama con OLLAMA_CONTEXT_LENGTH=16384 (ambiente effettivo registrato in ogni riga)",
+      "note": "Parte del modello gira in CPU (quota registrata in ogni riga): l'energia della CPU non è misurata. Ollama: reasoning_effort accende il ragionamento; livelli non verificati."
+    },
+    "inkling2mini": {
+      "tipo": "llamacpp",
+      "url": "http://localhost:8080/v1",
+      "id": "inkling2mini",
+      "contesto": 16384,
+      "avvio": "llama serve -m ~/models/inkling2mini/Inkling-2-Mini-IQ4_NL.gguf -ngl 99 --n-cpu-moe 22 -c 16384 -fa on -ub 256 --no-op-offload -np 1 --jinja --port 8080",
+      "note": "La CPU lavora (esperti di 22 layer su 24 in RAM) e la sua energia non è misurata. Il riposo è misurato con il modello già caricato. Ragionamento in reasoning_content."
+    },
+    "gemini-3.5-flash-lite": {
+      "tipo": "api",
+      "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "id": "gemini-3.5-flash-lite",
+      "chiave_env": "GEMINI_API_KEY",
+      "pausa_s": 15,
+      "tetto_chiamate": 15,
+      "avvio": "Google AI Studio, free tier, endpoint compatibile OpenAI (https://aistudio.google.com/docs/openai); modello Stable su https://aistudio.google.com/docs/models (letto il 2026-11-22)",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. La tabella reasoning_effort della documentazione non elenca questo modello e dice che sui Gemini 3 il ragionamento non si spegne."
+    },
+    "gemini-3.8-flash": {
+      "tipo": "api",
+      "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "id": "gemini-3.8-flash",
+      "chiave_env": "GEMINI_API_KEY",
+      "pausa_s": 15,
+      "tetto_chiamate": 15,
+      "avvio": "Google AI Studio, free tier, endpoint compatibile OpenAI (https://aistudio.google.com/docs/openai); modello Stable su https://aistudio.google.com/docs/models (letto il 2026-11-22)",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. La tabella reasoning_effort della documentazione non elenca questo modello e dice che sui Gemini 3 il ragionamento non si spegne."
+    }
+  }
+}

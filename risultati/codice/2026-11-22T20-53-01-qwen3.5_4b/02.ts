@@ -1,0 +1,4 @@
+export function palindromo(testo: string): boolean {
+  const pulito = testo.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  return pulito === pulito.split('').reverse().join('');
+}

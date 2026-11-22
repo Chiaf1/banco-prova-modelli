@@ -1,0 +1,117 @@
+export function valuta(espressione: string): number {
+  const tokens = tokenize(espressione);
+  let pos = 0;
+
+  function parseExpression(): number {
+    let result = parseTerm();
+    while (pos < tokens.length && (tokens[pos] === '+' || tokens[pos] === '-')) {
+      const op = tokens[pos];
+      pos++;
+      const right = parseTerm();
+      if (op === '+') {
+        result += right;
+      } else {
+        result -= right;
+      }
+    }
+    return result;
+  }
+
+  function parseTerm(): number {
+    let result = parseFactor();
+    while (pos < tokens.length && (tokens[pos] === '*' || tokens[pos] === '/')) {
+      const op = tokens[pos];
+      pos++;
+      const right = parseFactor();
+      if (op === '*') {
+        result *= right;
+      } else {
+        result /= right;
+      }
+    }
+    return result;
+  }
+
+  function parseFactor(): number {
+    if (pos < tokens.length && (tokens[pos] === '-' || tokens[pos] === '+')) {
+      const op = tokens[pos];
+      pos++;
+      return op === '+' ? parseFactor() : -parseFactor();
+    }
+
+    if (pos < tokens.length && tokens[pos] === '(') {
+      pos++;
+      const result = parseExpression();
+      if (pos < tokens.length && tokens[pos] === ')') {
+        pos++;
+      } else {
+        throw new SyntaxError("Mismatched parentheses");
+      }
+      return result;
+    }
+
+    if (pos >= tokens.length) {
+      throw new SyntaxError("Unexpected end of expression");
+    }
+
+    const num = parseNumber();
+    pos++;
+    return num;
+  }
+
+  function parseNumber(): number {
+    let start = pos;
+    while (pos < tokens.length && (tokens[pos] >= '0' && tokens[pos] <= '9' || tokens[pos] === '.')) {
+      pos++;
+    }
+    if (start === pos) {
+      throw new SyntaxError("Invalid number");
+    }
+    const str = tokens.slice(start, pos).join('');
+    return parseFloat(str);
+  }
+
+  function tokenize(input: string): string[] {
+    const cleaned = input.replace(/\s+/g, '');
+    if (cleaned.length === 0) {
+      throw new SyntaxError("Empty expression");
+    }
+    const chars = [...cleaned];
+    const validChars = new Set(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '+', '-', '*', '/', '(', ')']);
+    for (const char of chars) {
+      if (!validChars.has(char)) {
+        throw new SyntaxError(`Invalid character: ${char}`);
+      }
+    }
+
+    const tokens: string[] = [];
+    let i = 0;
+    while (i < chars.length) {
+      if (chars[i] === '(' || chars[i] === ')') {
+        tokens.push(chars[i]);
+        i++;
+      } else if (chars[i] === '+' || chars[i] === '-' || chars[i] === '*' || chars[i] === '/') {
+        tokens.push(chars[i]);
+        i++;
+      } else {
+        let numStr = '';
+        while (i < chars.length && (chars[i] >= '0' && chars[i] <= '9' || chars[i] === '.')) {
+          numStr += chars[i];
+          i++;
+        }
+        if (numStr.length === 0) {
+          throw new SyntaxError("Invalid number");
+        }
+        const dotCount = (numStr.match(/\./g) || []).length;
+        if (dotCount > 1) {
+          throw new SyntaxError("Multiple decimal points");
+        }
+        tokens.push(numStr);
+      }
+    }
+    return tokens;
+  }
+
+  const result = parseExpression();
+  return result;
+}
