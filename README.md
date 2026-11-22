@@ -36,6 +36,16 @@ Misure per esercizio: tempo totale, tempo al primo token (ragionamento compreso)
 
 Un modello alla volta: il banco scarica i modelli di Ollama prima e dopo, e controlla che il server llama.cpp sia spento quando usa Ollama (e viceversa). Ollama deve avere `OLLAMA_CONTEXT_LENGTH=16384` nel servizio: il banco lo controlla.
 
+## Prossimi passi
+
+Stato al 22 novembre 2026: eseguiti qwen3.5:4b e qwen3:8b (vedi [risultati/riepilogo.md](risultati/riepilogo.md)).
+
+1. Eseguire gli altri modelli: `npm run bench -- --tutti` salta quelli già fatti.
+   - Prima i modelli Ollama (gemma4:e4b, qwen3.5:9b), con il server llama.cpp spento.
+   - Poi Inkling (inkling2mini): `llama serve` avviato a mano con il comando in `bench/modelli.json`; il banco scarica Ollama e controlla che sia vuoto.
+   - Poi i Gemini (gemini-3.5-flash-lite, gemini-3.8-flash): 11 chiamate ciascuno con 15 s di pausa, sotto il tetto di 15; dopo un 429 il banco si ferma.
+2. Solo dopo aver provato tutti i modelli, valutare i parametri. Finché non sono stati provati tutti restano `max_tokens` 8192 e `reasoning_effort` "medium", così i risultati sono confrontabili. Con i primi due modelli molte risposte agli esercizi 07, 08 e 10 arrivano a 8192 token senza codice (finish_reason `length`). Le opzioni sono alzare `max_tokens` o provare `reasoning_effort` "low". Cambiare un parametro cambia l'impronta, quindi tutti i modelli vanno rieseguiti.
+
 ## Origine
 
 Nato sul branch `bench/v0` di [harness-giocattolo](https://github.com/Chiaf1/harness-giocattolo), dove resta la storia dei primi commit (e delle prove su Inkling). Nei `.jsonl` dei primi risultati il campo `versione_programma.commit` si riferisce a quella repo.
