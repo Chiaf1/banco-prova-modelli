@@ -1,0 +1,29 @@
+export function fizzBuzz(n: number): string[] {
+  // Validazione dell'input
+  if (!Number.isInteger(n) || n < 0) {
+    throw new RangeError("n deve essere un intero non negativo.");
+  }
+
+  const result: string[] = [];
+
+  // Iterazione da 1 a n
+  for (let i = 1; i <= n; i++) {
+    let output: string;
+
+    // Controllo della divisibilità (l'ordine è cruciale: 3 e 5 prima di 3 o 5 singolarmente)
+    if (i % 3 === 0 && i % 5 === 0) {
+      output = "FizzBuzz";
+    } else if (i % 3 === 0) {
+      output = "Fizz";
+    } else if (i % 5 === 0) {
+      output = "Buzz";
+    } else {
+      // Caso base: il numero come stringa
+      output = i.toString();
+    }
+
+    result.push(output);
+  }
+
+  return result;
+}

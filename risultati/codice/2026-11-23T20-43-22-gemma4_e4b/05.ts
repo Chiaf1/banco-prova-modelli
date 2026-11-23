@@ -1,0 +1,17 @@
+export function raggruppa<T>(elementi: T[], chiave: (elemento: T) => string): Record<string, T[]> {
+  const risultato: Record<string, T[]> = {};
+
+  for (const elemento of elementi) {
+    const key = chiave(elemento);
+
+    if (!risultato[key]) {
+      // Inizializza il gruppo se la chiave non è stata vista prima
+      risultato[key] = [];
+    }
+
+    // Aggiunge l'elemento al gruppo. Poiché iteriamo in sequenza, l'ordine originale è mantenuto.
+    risultato[key].push(elemento);
+  }
+
+  return risultato;
+}

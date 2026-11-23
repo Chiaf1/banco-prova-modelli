@@ -1,0 +1,18 @@
+export function bilanciate(testo: string): boolean {
+  const stack: string[] = [];
+  const openers = new Set(['(', '[', '{']);
+  const closers = new Map([[')', '('], [']', '['], ['}', '{']]);
+
+  for (const char of testo) {
+    if (openers.has(char)) {
+      stack.push(char);
+    } else if (closers.has(char)) {
+      const lastOpen = stack.pop();
+      if (lastOpen !== closers.get(char)) {
+        return false;
+      }
+    }
+  }
+
+  return stack.length === 0;
+}

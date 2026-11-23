@@ -1,0 +1,23 @@
+export function contaParole(testo: string): Record<string, number> {
+  const counts: Record<string, number> = {};
+  
+  // Convert text to lowercase for case-insensitive counting
+  const lowerText = testo.toLowerCase();
+  
+  // Regex matches sequences of Unicode letters or digits.
+  // \p{L} covers all letters (including accented).
+  // \p{N} covers digits.
+  // 'u' flag enables Unicode property escapes.
+  // This naturally treats spaces, punctuation, apostrophes, dashes as separators.
+  const matches = lowerText.match(/[\p{L}\p{N}]+/gu);
+  
+  if (!matches) {
+    return {};
+  }
+
+  for (const word of matches) {
+    counts[word] = (counts[word] || 0) + 1;
+  }
+  
+  return counts;
+}
