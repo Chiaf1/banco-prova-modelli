@@ -38,13 +38,10 @@ Un modello alla volta: il banco scarica i modelli di Ollama prima e dopo, e cont
 
 ## Prossimi passi
 
-Stato al 22 novembre 2026: eseguiti qwen3.5:4b e qwen3:8b (vedi [risultati/riepilogo.md](risultati/riepilogo.md)).
+Stato al 23 novembre 2026: eseguiti i modelli locali qwen3.5:4b, qwen3:8b, gemma4:e4b, qwen3.5:9b e inkling2mini (vedi [risultati/riepilogo.md](risultati/riepilogo.md)).
 
-1. Eseguire gli altri modelli: `npm run bench -- --tutti` salta quelli già fatti.
-   - Prima i modelli Ollama (gemma4:e4b, qwen3.5:9b), con il server llama.cpp spento.
-   - Poi Inkling (inkling2mini): `llama serve` avviato a mano con il comando in `bench/modelli.json`; il banco scarica Ollama e controlla che sia vuoto.
-   - Poi i Gemini (gemini-3.5-flash-lite, gemini-3.8-flash): 11 chiamate ciascuno con 15 s di pausa, sotto il tetto di 15; dopo un 429 il banco si ferma.
-2. Solo dopo aver provato tutti i modelli, valutare i parametri. Finché non sono stati provati tutti restano `max_tokens` 8192 e `reasoning_effort` "medium", così i risultati sono confrontabili. Con i primi due modelli molte risposte agli esercizi 07, 08 e 10 arrivano a 8192 token senza codice (finish_reason `length`). Le opzioni sono alzare `max_tokens` o provare `reasoning_effort` "low". Cambiare un parametro cambia l'impronta, quindi tutti i modelli vanno rieseguiti.
+1. Eseguire i Gemini (gemini-3.5-flash-lite, gemini-3.8-flash) con `npm run bench -- --tutti`, che salta i modelli già fatti: 11 chiamate ciascuno con 15 s di pausa, sotto il tetto di 15; dopo un 429 il banco si ferma.
+2. Solo dopo aver provato tutti i modelli, valutare i parametri. Finché non sono stati provati tutti restano `max_tokens` 8192 e `reasoning_effort` "medium", così i risultati sono confrontabili. Con i modelli locali diverse risposte agli esercizi 07, 08 e 10 arrivano a 8192 token senza codice (finish_reason `length`): 2 su 10 con qwen3.5:4b, 3 con qwen3:8b e qwen3.5:9b, 1 con inkling2mini (il 10), nessuna con gemma4:e4b. Le opzioni sono alzare `max_tokens` o provare `reasoning_effort` "low". Cambiare un parametro cambia l'impronta, quindi tutti i modelli vanno rieseguiti.
 
 ## Origine
 

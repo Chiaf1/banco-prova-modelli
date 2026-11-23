@@ -1,0 +1,12 @@
+export function palindromo(testo: string): boolean {
+  const chars: string[] = [];
+  for (const ch of testo) {
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')) {
+      chars.push(ch.toLowerCase());
+    }
+  }
+  for (let i = 0; i < chars.length / 2; i++) {
+    if (chars[i] !== chars[chars.length - 1 - i]) return false;
+  }
+  return true;
+}
