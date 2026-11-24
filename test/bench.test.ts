@@ -33,6 +33,7 @@ import {
   type RigaEsercizio,
 } from "../bench/calcoli.ts";
 import { leggiSse } from "../bench/api.ts";
+import { promptEsercizio } from "../bench/prompt.ts";
 
 const vicino = (a: number | null, b: number, eps = 1e-9) =>
   assert.ok(a != null && Math.abs(a - b) < eps, `${a} non è circa ${b}`);
@@ -414,4 +415,16 @@ test("componiRiepilogo: senza esecuzioni né altre impronte", () => {
   const testo = componiRiepilogo([], confronto());
   assert.equal(testo.split("Nessuna esecuzione.").length, 3);
   assert.doesNotMatch(testo, /Altre impronte/);
+});
+
+// ---- prompt ----
+
+test("promptEsercizio: codice con la firma, json e testo con il blocco da usare", () => {
+  const c = promptEsercizio("Consegna A", "codice", "export function f() {}");
+  assert.match(c, /in TypeScript\.\n\nConsegna A\n[\s\S]*```ts\nexport function f\(\) \{\}\n```/);
+  const j = promptEsercizio("Consegna B", "json", null);
+  assert.match(j, /Consegna B/);
+  assert.match(j, /un solo blocco ```json\./);
+  assert.doesNotMatch(j, /TypeScript|firma/);
+  assert.match(promptEsercizio("Consegna C", "testo", null), /un solo blocco ```text\./);
 });

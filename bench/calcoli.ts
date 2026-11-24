@@ -161,6 +161,7 @@ export function nomeFile(modello: string): string {
 // ---- Riepilogo ----
 
 export type RigaEsercizio = {
+  formato?: Formato; // assente nelle righe scritte prima del campo: codice
   superato: boolean;
   token_al_secondo: number | null;
   primo_token_ms: number | null;
@@ -250,6 +251,7 @@ export function costoPerSuperato(costo: number | null, superati: number): number
 export type Confronto = {
   parametri: Record<string, unknown>;
   esercizi: string[]; // nomi degli esercizi previsti
+  formati?: Record<string, Formato>; // formato di ogni esercizio; assente nei file vecchi (tutti codice)
   versione_prompt: number;
   impronta_esercizi: string;
 };
