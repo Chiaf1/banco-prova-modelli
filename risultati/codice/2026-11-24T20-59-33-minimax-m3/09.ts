@@ -1,0 +1,41 @@
+export function fondiIntervalli(intervalli: [number, number][]): [number, number][] {
+  // Validazione: ogni intervallo deve avere estremi finiti e inizio <= fine
+  for (const [inizio, fine] of intervalli) {
+    if (!Number.isFinite(inizio) || !Number.isFinite(fine)) {
+      throw new RangeError("Estremi non finiti");
+    }
+    if (inizio > fine) {
+      throw new RangeError("L'inizio non può essere maggiore della fine");
+    }
+  }
+
+  if (intervalli.length === 0) {
+    return [];
+  }
+
+  // Copia profonda delle coppie per non modificare l'input
+  const copia: [number, number][] = intervalli.map(([a, b]) => [a, b]);
+
+  // Ordina per inizio crescente
+  copia.sort((a, b) => a[0] - b[0]);
+
+  // Fusione degli intervalli sovrapposti o adiacenti
+  const risultato: [number, number][] = [];
+  let [inizioCorrente, fineCorrente] = copia[0];
+
+  for (let i = 1; i < copia.length; i++) {
+    const [inizio, fine] = copia[i];
+    if (inizio <= fineCorrente) {
+      // Si sovrappongono o si toccano: estendi l'intervallo corrente
+      fineCorrente = Math.max(fineCorrente, fine);
+    } else {
+      // Non si sovrappongono: chiudi il corrente e iniziane uno nuovo
+      risultato.push([inizioCorrente, fineCorrente]);
+      inizioCorrente = inizio;
+      fineCorrente = fine;
+    }
+  }
+  risultato.push([inizioCorrente, fineCorrente]);
+
+  return risultato;
+}

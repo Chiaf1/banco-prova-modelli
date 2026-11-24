@@ -1,0 +1,16 @@
+export function raggruppa<T>(elementi: T[], chiave: (elemento: T) => string): Record<string, T[]> {
+  const gruppi: Record<string, T[]> = {};
+  for (const elemento of elementi) {
+    const k = chiave(elemento);
+    if (!Object.prototype.hasOwnProperty.call(gruppi, k)) {
+      Object.defineProperty(gruppi, k, {
+        value: [],
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
+    }
+    gruppi[k].push(elemento);
+  }
+  return gruppi;
+}

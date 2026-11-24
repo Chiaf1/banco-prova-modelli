@@ -1,0 +1,20 @@
+export function bilanciate(testo: string): boolean {
+  const stack: string[] = [];
+  const coppie: Record<string, string> = {
+    ")": "(",
+    "]": "[",
+    "}": "{",
+  };
+
+  for (const c of testo) {
+    if (c === "(" || c === "[" || c === "{") {
+      stack.push(c);
+    } else if (c === ")" || c === "]" || c === "}") {
+      if (stack.pop() !== coppie[c]) {
+        return false;
+      }
+    }
+  }
+
+  return stack.length === 0;
+}

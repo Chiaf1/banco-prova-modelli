@@ -77,6 +77,52 @@
       "tetto_chiamate": 15,
       "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
       "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete."
+    },
+    "inkling-2-mini": {
+      "tipo": "api",
+      "url": "https://openrouter.ai/api/v1",
+      "id": "thinkingmachines/inkling-2-mini",
+      "chiave_env": "OPENROUTER_API_KEY",
+      "tetto_chiamate": 15,
+      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. Stesso modello di inkling2mini locale (IQ4_NL su llama.cpp): confronto quantizzato vs servito. Più provider a prezzi diversi, OpenRouter sceglie."
+    },
+
+    "nex-n2-mini": {
+      "tipo": "api",
+      "url": "https://openrouter.ai/api/v1",
+      "id": "nex-agi/nex-n2-mini",
+      "chiave_env": "OPENROUTER_API_KEY",
+      "tetto_chiamate": 15,
+      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete."
+    },
+    "deepseek-v4.1-flash": {
+      "tipo": "api",
+      "url": "https://openrouter.ai/api/v1",
+      "id": "deepseek/deepseek-v4.1-flash",
+      "chiave_env": "OPENROUTER_API_KEY",
+      "tetto_chiamate": 15,
+      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. Più provider: OpenRouter sceglie, i tempi possono variare tra un run e l'altro."
+    },
+    "qwen3-coder-next": {
+      "tipo": "api",
+      "url": "https://openrouter.ai/api/v1",
+      "id": "qwen/qwen3-coder-next",
+      "chiave_env": "OPENROUTER_API_KEY",
+      "tetto_chiamate": 15,
+      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. Modello di coding non ragionante: reasoning_effort probabilmente ignorato."
+    },
+    "minimax-m3": {
+      "tipo": "api",
+      "url": "https://openrouter.ai/api/v1",
+      "id": "minimax/minimax-m3",
+      "chiave_env": "OPENROUTER_API_KEY",
+      "tetto_chiamate": 15,
+      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. Ragiona molto: occhio ai token in uscita."
     }
   }
 }

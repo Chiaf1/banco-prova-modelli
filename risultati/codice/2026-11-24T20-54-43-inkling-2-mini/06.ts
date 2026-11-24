@@ -1,0 +1,12 @@
+export function bilanciate(testo: string): boolean {
+  const stack: string[] = [];
+  const apertura: Record<string, string> = { ')': '(', ']': '[', '}': '{' };
+  for (const ch of testo) {
+    if (ch === '(' || ch === '[' || ch === '{') {
+      stack.push(ch);
+    } else if (ch === ')' || ch === ']' || ch === '}') {
+      if (stack.pop() !== apertura[ch]) return false;
+    }
+  }
+  return stack.length === 0;
+}

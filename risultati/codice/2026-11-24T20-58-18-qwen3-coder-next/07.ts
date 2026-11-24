@@ -1,0 +1,83 @@
+export function aRomano(n: number): string {
+  if (!Number.isInteger(n) || n < 1 || n > 3999) {
+    throw new RangeError("Input must be an integer between 1 and 3999");
+  }
+
+  const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+  const symbols = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+
+  let result = "";
+  let remaining = n;
+
+  for (let i = 0; i < values.length; i++) {
+    const count = Math.floor(remaining / values[i]);
+    if (count > 0) {
+      result += symbols[i].repeat(count);
+      remaining -= values[i] * count;
+    }
+  }
+
+  return result;
+}
+
+export function daRomano(s: string): number {
+  if (typeof s !== "string" || s.length === 0) {
+    throw new RangeError("Input must be a non-empty string");
+  }
+
+  // Check for invalid characters
+  if (!/^[IVXLCDM]+$/.test(s)) {
+    throw new RangeError("Input contains invalid characters");
+  }
+
+  // Check for invalid patterns (like IIII, VV, etc.)
+  // Valid patterns: no more than 3 consecutive identical symbols (except M)
+  // No subtractive combinations like IC, IM, VX, etc.
+  if (/IIII/.test(s) || /VV/.test(s) || /XXXX/.test(s) || /LL/.test(s) || /CCCC/.test(s) || /DD/.test(s) || /MMMM/.test(s)) {
+    throw new RangeError("Invalid Roman numeral format");
+  }
+
+  // Check for invalid subtractive combinations
+  // Valid subtractive pairs: IV, IX, XL, XC, CD, CM
+  // Invalid ones: IL, IC, VX, VL, VC, VM, XD, XM, LD, LM, DM
+  if (/IL|IC|VX|VL|VC|VM|XD|XM|LD|LM|DM/.test(s)) {
+    throw new RangeError("Invalid subtractive notation");
+  }
+
+  // Check for invalid ordering (e.g., IXI, IVI, etc.)
+  // A more robust check: parse and verify it matches the expected format
+  const romanMap: Record<string, number> = {
+    I: 1,
+    V: 5,
+    X: 10,
+    L: 50,
+    C: 100,
+    D: 500,
+    M: 1000
+  };
+
+  let total = 0;
+  let i = 0;
+
+  while (i < s.length) {
+    const current = romanMap[s[i]];
+    const next = i + 1 < s.length ? romanMap[s[i + 1]] : 0;
+
+    if (current < next) {
+      // Subtractive case
+      total += next - current;
+      i += 2;
+    } else {
+      total += current;
+      i++;
+    }
+  }
+
+  // Verify that converting back gives the same string
+  const convertedBack = aRomano(total);
+  if (convertedBack !== s) {
+    throw new RangeError("Invalid Roman numeral format");
+  }
+
+  return total;
+}

@@ -1,0 +1,45 @@
+export function fondiIntervalli(intervalli: [number, number][]): [number, number][] {
+  // Gestione input vuoto
+  if (intervalli.length === 0) {
+    return [];
+  }
+
+  // Validazione degli intervalli
+  for (const [inizio, fine] of intervalli) {
+    // Verifica che i valori siano numeri finiti
+    if (!Number.isFinite(inizio) || !Number.isFinite(fine)) {
+      throw new RangeError("Valore non finito trovato negli intervalli");
+    }
+    // Verifica che inizio <= fine
+    if (inizio > fine) {
+      throw new RangeError("Inizio maggiore di fine in un intervallo");
+    }
+  }
+
+  // Copia profonda dell'array e ordinamento per inizio crescente
+  const intervalliCopia = intervalli.map(([inizio, fine]) => [inizio, fine] as [number, number]);
+  intervalliCopia.sort((a, b) => a[0] - b[0]);
+
+  // Fusione degli intervalli
+  const risultato: [number, number][] = [];
+  
+  for (const [inizio, fine] of intervalliCopia) {
+    if (risultato.length === 0) {
+      risultato.push([inizio, fine]);
+    } else {
+      const ultimo = risultato[risultato.length - 1];
+      // Se l'intervallo corrente si sovrappone o tocca l'ultimo intervallo nel risultato
+      if (inizio <= ultimo[1] + 1e-10) { // piccola tolleranza per errori di virgola mobile (non strettamente necessaria ma prudente)
+        // Unisci gli intervalli
+        const nuovoInizio = ultimo[0];
+        const nuovoFine = Math.max(ultimo[1], fine);
+        risultato[risultato.length - 1] = [nuovoInizio, nuovoFine];
+      } else {
+        // Aggiungi l'intervallo corrente
+        risultato.push([inizio, fine]);
+      }
+    }
+  }
+
+  return risultato;
+}
