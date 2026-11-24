@@ -41,6 +41,14 @@ temperature 0, max_tokens 8192, reasoning_effort medium; 10 esercizi (01-somma-p
 
 Esecuzioni non confrontabili con quelle sopra.
 
+### temperature 0, max_tokens 8192, reasoning_effort medium; 1 esercizio (01-somma-pari); prompt v1 (chiave c8d4ae85c9b3c857)
+
+#### Modelli locali
+
+| Modello | Data | Superati | tok/s medi | Primo token medio (s) | Tempo medio (s) | Token uscita medi | Wh totali | Wh medi | Riposo (W) | Prompt tok/s (token) | Ragiona | Troncati | Note |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| gemma4:e4b | 2026-11-24T21-52-09 | 1/1 | 158,4 | 0,12 | 5,6 | 870 | 0,318 | 0,3181 | 6,2 | 1814 (4143) | sì | 0 | Ollama: reasoning_effort accende il ragionamento (con "none" lo spegne); non è verificato che medium sia diverso da low o high per questo modello. |
+
 ### temperature 0, max_tokens 8192, reasoning_effort medium; 2 esercizi (01-somma-pari … 02-palindromo); prompt v1 (chiave 41ea99bc7d90155b)
 
 #### Modelli locali

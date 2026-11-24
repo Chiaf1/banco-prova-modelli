@@ -1,0 +1,8 @@
+export function sommaPari(numeri: number[]): number {
+  // Filtra l'array per mantenere solo i numeri che sono interi E divisibili per 2.
+  const numeriPari = numeri.filter(n => Number.isInteger(n) && n % 2 === 0);
+
+  // Somma tutti i numeri filtrati. L'argomento iniziale 0 gestisce il caso
+  // in cui l'array è vuoto o non contiene numeri pari.
+  return numeriPari.reduce((somma, numero) => somma + numero, 0);
+}
