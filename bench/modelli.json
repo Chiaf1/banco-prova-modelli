@@ -87,16 +87,6 @@
       "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
       "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. Stesso modello di inkling2mini locale (IQ4_NL su llama.cpp): confronto quantizzato vs servito. Più provider a prezzi diversi, OpenRouter sceglie."
     },
-
-    "nex-n2-mini": {
-      "tipo": "api",
-      "url": "https://openrouter.ai/api/v1",
-      "id": "nex-agi/nex-n2-mini",
-      "chiave_env": "OPENROUTER_API_KEY",
-      "tetto_chiamate": 15,
-      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
-      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete."
-    },
     "deepseek-v4.1-flash": {
       "tipo": "api",
       "url": "https://openrouter.ai/api/v1",
