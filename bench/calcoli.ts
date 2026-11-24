@@ -2,9 +2,22 @@
 // Tutti i numeri del riepilogo passano da qui (test in test/bench.test.ts).
 import { createHash } from "node:crypto";
 
-// Primo blocco ```ts o ```typescript del testo; null se non c'è o non è chiuso.
-export function estraiCodice(testo: string): string | null {
-  const m = /```(?:ts|typescript)\b[^\n]*\n([\s\S]*?)```/i.exec(testo);
+// Formato della risposta che un esercizio chiede (dichiarato in esercizi/NN-nome/esercizio.json).
+export type Formato = "codice" | "json" | "testo";
+export const FORMATI: readonly Formato[] = ["codice", "json", "testo"];
+// Linguaggio del blocco che il modello deve scrivere ed estensione del file in cui il banco lo salva.
+export const LINGUAGGIO: Record<Formato, string> = { codice: "ts", json: "json", testo: "text" };
+export const ESTENSIONE: Record<Formato, string> = { codice: "ts", json: "json", testo: "txt" };
+const ALIAS: Record<Formato, string> = { codice: "ts|typescript", json: "json", testo: "text|txt" };
+
+// Categoria del riepilogo: gli esercizi senza formato (righe scritte prima del campo) sono di codice.
+export type Categoria = "codice" | "non codice";
+export const categoria = (f: Formato | null | undefined): Categoria => (f == null || f === "codice" ? "codice" : "non codice");
+
+// Primo blocco recintato del formato (```ts o ```typescript, ```json, ```text o ```txt);
+// null se non c'è o non è chiuso. Il blocco è obbligatorio anche per json e testo.
+export function estraiRisposta(testo: string, formato: Formato): string | null {
+  const m = new RegExp("```(?:" + ALIAS[formato] + ")\\b[^\\n]*\\n([\\s\\S]*?)```", "i").exec(testo);
   return m ? m[1] : null;
 }
 

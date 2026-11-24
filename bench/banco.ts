@@ -9,7 +9,7 @@ import { chiamata, type EsitoChiamata, type ParametriChiamata } from "./api.ts";
 import {
   confrontaHardware,
   dataEsecuzione,
-  estraiCodice,
+  estraiRisposta,
   impronta,
   nomeFile,
   potenzaMedia,
@@ -287,7 +287,7 @@ async function eseguiModello(nome: string): Promise<void> {
       const e = await chiama(promptEsercizio(es.consegna, es.firma), config.parametri_chiamata);
       const wh = await energia(e);
       writeFileSync(join(cartellaCodice, `${es.numero}.risposta.md`), e.testo);
-      const codice = estraiCodice(e.testo);
+      const codice = estraiRisposta(e.testo, "codice");
       let test = null;
       if (codice != null) {
         const file = join(cartellaCodice, `${es.numero}.ts`);

@@ -10,7 +10,8 @@ import {
   descriviConfronto,
   costoPerSuperato,
   dataEsecuzione,
-  estraiCodice,
+  estraiRisposta,
+  categoria,
   formato,
   impronta,
   leggiDataNvidia,
@@ -36,32 +37,58 @@ import { leggiSse } from "../bench/api.ts";
 const vicino = (a: number | null, b: number, eps = 1e-9) =>
   assert.ok(a != null && Math.abs(a - b) < eps, `${a} non è circa ${b}`);
 
-// ---- estrazione del codice ----
+// ---- estrazione della risposta ----
 
-test("estraiCodice: blocco ts", () => {
-  assert.equal(estraiCodice("Ecco:\n```ts\nexport const a = 1;\n```\nfine"), "export const a = 1;\n");
+test("estraiRisposta codice: blocco ts", () => {
+  assert.equal(estraiRisposta("Ecco:\n```ts\nexport const a = 1;\n```\nfine", "codice"), "export const a = 1;\n");
 });
 
-test("estraiCodice: blocco typescript e maiuscole", () => {
-  assert.equal(estraiCodice("```TypeScript\nlet x = 2;\n```"), "let x = 2;\n");
+test("estraiRisposta codice: blocco typescript e maiuscole", () => {
+  assert.equal(estraiRisposta("```TypeScript\nlet x = 2;\n```", "codice"), "let x = 2;\n");
 });
 
-test("estraiCodice: prende il primo blocco ts e salta gli altri linguaggi", () => {
+test("estraiRisposta codice: prende il primo blocco ts e salta gli altri linguaggi", () => {
   const t = "```js\nnope()\n```\n```ts\nprimo\n```\n```ts\nsecondo\n```";
-  assert.equal(estraiCodice(t), "primo\n");
+  assert.equal(estraiRisposta(t, "codice"), "primo\n");
 });
 
-test("estraiCodice: non confonde tsx", () => {
-  assert.equal(estraiCodice("```tsx\n<a/>\n```"), null);
+test("estraiRisposta codice: non confonde tsx", () => {
+  assert.equal(estraiRisposta("```tsx\n<a/>\n```", "codice"), null);
 });
 
-test("estraiCodice: blocco non chiuso o assente", () => {
-  assert.equal(estraiCodice("```ts\nexport function f() {"), null);
-  assert.equal(estraiCodice("niente codice"), null);
+test("estraiRisposta codice: blocco non chiuso o assente", () => {
+  assert.equal(estraiRisposta("```ts\nexport function f() {", "codice"), null);
+  assert.equal(estraiRisposta("niente codice", "codice"), null);
 });
 
-test("estraiCodice: attributi dopo il linguaggio e CRLF", () => {
-  assert.equal(estraiCodice('```ts title="a.ts"\r\nconst a = 1;\r\n```'), "const a = 1;\r\n");
+test("estraiRisposta codice: attributi dopo il linguaggio e CRLF", () => {
+  assert.equal(estraiRisposta('```ts title="a.ts"\r\nconst a = 1;\r\n```', "codice"), "const a = 1;\r\n");
+});
+
+test("estraiRisposta json: solo il blocco json, non jsonc né ts", () => {
+  const t = 'Ecco:\n```ts\nconst a = 1;\n```\n```jsonc\n{}\n```\n```JSON\n{"a": 1}\n```\n```json\n{"b": 2}\n```';
+  assert.equal(estraiRisposta(t, "json"), '{"a": 1}\n');
+  assert.equal(estraiRisposta(t, "codice"), "const a = 1;\n");
+});
+
+test("estraiRisposta json: il blocco è obbligatorio, anche se tutta la risposta è JSON", () => {
+  assert.equal(estraiRisposta('{"a": 1}', "json"), null);
+  assert.equal(estraiRisposta('```\n{"a": 1}\n```', "json"), null);
+  assert.equal(estraiRisposta('```json\n{"a": 1}', "json"), null);
+});
+
+test("estraiRisposta testo: blocco text o txt, non textile", () => {
+  assert.equal(estraiRisposta("```text\n1. Uno.\n2. Due.\n```", "testo"), "1. Uno.\n2. Due.\n");
+  assert.equal(estraiRisposta("```txt\nciao\n```", "testo"), "ciao\n");
+  assert.equal(estraiRisposta("```textile\nciao\n```", "testo"), null);
+  assert.equal(estraiRisposta("```md\nciao\n```", "testo"), null);
+});
+
+test("categoria: codice o non codice, senza formato è codice", () => {
+  assert.equal(categoria("codice"), "codice");
+  assert.equal(categoria(undefined), "codice");
+  assert.equal(categoria("json"), "non codice");
+  assert.equal(categoria("testo"), "non codice");
 });
 
 // ---- medie e token/s ----
