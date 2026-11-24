@@ -1,0 +1,33 @@
+{
+  "numero_rapporto": "RI-2026-0412",
+  "data_intervento": "2026-11-03",
+  "cliente": "Ventura Stampi srl",
+  "macchina": {
+    "modello": "PH-250",
+    "matricola": "VS-88213/B"
+  },
+  "tecnici": [
+    "Gualtieri",
+    "Marchetti",
+    "Rinaldi"
+  ],
+  "minuti_lavoro": 435,
+  "km_trasferta": 76,
+  "ricambi": [
+    {
+      "codice": "BR-6204",
+      "quantita": 2
+    },
+    {
+      "codice": "CD-5520",
+      "quantita": 1
+    },
+    {
+      "codice": "FU-010",
+      "quantita": 2
+    }
+  ],
+  "esito": "parziale",
+  "ritorno_previsto": true,
+  "note": "manca il fusibile delle luci"
+}
