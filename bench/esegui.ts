@@ -94,6 +94,9 @@ export function eseguiTest(es: Esercizio, soluzione: string): EsitoTest {
       cwd: es.cartella,
       env: { PATH: process.env.PATH ?? "", SOLUZIONE: assoluta },
       timeout: TIMEOUT_TEST_MS,
+      // SIGKILL: il test runner intercetta SIGTERM e in un ciclo sincrono non lo gestisce mai,
+      // quindi con il segnale predefinito il timeout non fermerebbe il processo.
+      killSignal: "SIGKILL",
       encoding: "utf8",
       maxBuffer: 10 * 1024 * 1024,
     },
