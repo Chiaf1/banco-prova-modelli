@@ -152,8 +152,8 @@ async function eseguiModello(nome: string): Promise<void> {
 
   const data = dataEsecuzione(new Date());
   const fileJsonl = join(RISULTATI, `${data}-${nomeFile(nome)}.jsonl`);
-  const cartellaCodice = join(RISULTATI, "codice", `${data}-${nomeFile(nome)}`);
-  mkdirSync(cartellaCodice, { recursive: true });
+  const cartellaRisposte = join(RISULTATI, "codice", `${data}-${nomeFile(nome)}`);
+  mkdirSync(cartellaRisposte, { recursive: true });
 
   const hardware = rilevaHardware();
   const differenze = confrontaHardware(hardware, readFileSync(join(RADICE, "note", "hardware.md"), "utf8"));
@@ -289,11 +289,11 @@ async function eseguiModello(nome: string): Promise<void> {
     for (const es of esercizi) {
       const e = await chiama(promptEsercizio(es.consegna, es.formato, es.firma), config.parametri_chiamata);
       const wh = await energia(e);
-      writeFileSync(join(cartellaCodice, `${es.numero}.risposta.md`), e.testo);
+      writeFileSync(join(cartellaRisposte, `${es.numero}.risposta.md`), e.testo);
       const risposta = estraiRisposta(e.testo, es.formato);
       let test = null;
       if (risposta != null) {
-        const file = join(cartellaCodice, `${es.numero}.${ESTENSIONE[es.formato]}`);
+        const file = join(cartellaRisposte, `${es.numero}.${ESTENSIONE[es.formato]}`);
         writeFileSync(file, risposta);
         test = eseguiTest(es, file);
       }

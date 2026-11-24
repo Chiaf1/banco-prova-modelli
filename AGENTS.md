@@ -22,7 +22,7 @@ node --test --test-name-pattern="whIntegrati" test/bench.test.ts
 - `bench/calcoli.ts`: funzioni pure (formati ed estrazione della risposta, medie, token/s, Wh, costo, chiave di confronto, riepilogo), testate in `test/bench.test.ts`.
 - `bench/riepilogo.ts`: legge tutti i `.jsonl` e riscrive `risultati/riepilogo.md` (due leaderboard, locali e API, con i superati per categoria, più gli esiti per esercizio). Il banco lo chiama a fine esecuzione.
 - `bench/api.ts`: chiamata in streaming a un endpoint compatibile OpenAI.
-- `bench/banco.ts`: il programma; `energia.ts` (nvidia-smi), `sistema.ts` (hardware, Ollama), `esegui.ts` (test in sandbox), `prompt.ts` (testi mandati ai modelli).
+- `bench/banco.ts`: il programma; `energia.ts` (nvidia-smi), `sistema.ts` (hardware, Ollama), `esegui.ts` (test in sandbox), `prompt.ts` (testi mandati ai modelli), `verifica.ts` (`npm run bench:verifica`: le risposte giuste scritte a mano passano, le sbagliate falliscono).
 - `esercizi/NN-nome/`: `esercizio.json` (`{ "formato": "codice" | "json" | "testo" }`, obbligatorio), `consegna.md`, `soluzione.test.ts` e le risposte scritte a mano. Codice: `firma.ts` e `riferimento.ts`. Json e testo: `riferimento.json`/`.txt` e almeno una `sbagliata-*.json`/`.txt`, ognuna con una regola violata. Il test legge la risposta da `process.env.SOLUZIONE`. I loro test non entrano in `npm test`.
 - `risultati/`: scritti dal banco, non modificarli a mano. Il riepilogo si rifà con `npm run bench:riepilogo`.
 - `note/`: scheda del PC di prova (il banco la confronta a ogni esecuzione) e messa a punto di Inkling.

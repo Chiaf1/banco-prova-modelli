@@ -12,7 +12,7 @@ Banco minimo per mettere alla prova modelli di linguaggio, locali e via API, sug
 
   01, 02, 03, 05 e 06, superati da tutti i modelli provati, sono stati tolti (restano nella storia git); i numeri non sono stati riassegnati.
 - Modelli e parametri in [bench/modelli.json](bench/modelli.json).
-- Risultati in [risultati/](risultati/): un `.jsonl` per esecuzione, il codice generato e [risultati/riepilogo.md](risultati/riepilogo.md).
+- Risultati in [risultati/](risultati/): un `.jsonl` per esecuzione, le risposte dei modelli (in `risultati/codice/`, anche quelle in json e testo) e [risultati/riepilogo.md](risultati/riepilogo.md).
 - PC di prova in [note/hardware.md](note/hardware.md), messa a punto di Inkling su llama.cpp in [note/inkling-llamacpp.md](note/inkling-llamacpp.md).
 
 ## Requisiti
@@ -65,8 +65,8 @@ Un modello alla volta: il banco scarica i modelli di Ollama prima e dopo, e cont
 Stato al 23 novembre 2026: eseguiti i modelli locali qwen3.5:4b, qwen3:8b, gemma4:e4b, qwen3.5:9b e inkling2mini (vedi [risultati/riepilogo.md](risultati/riepilogo.md)).
 
 1. Rieseguire tutti i modelli sui 13 esercizi attuali con il prompt v2: con i 4 esercizi non di codice sono cambiati esercizi e versione del prompt, e i risultati precedenti finiscono tra le "altre impronte" del riepilogo.
-1. Eseguire i Gemini (gemini-3.5-flash-lite, gemini-3.8-flash) con `npm run bench -- --tutti`, che salta i modelli già fatti: 14 chiamate ciascuno (prompt lungo e 13 esercizi) con 15 s di pausa, sotto il tetto di 15; dopo un 429 o un 503 (servizio sovraccarico) il banco si ferma e passa al modello successivo.
-2. Solo dopo aver provato tutti i modelli, valutare i parametri. Finché non sono stati provati tutti restano `max_tokens` 8192 e `reasoning_effort` "medium", così i risultati sono confrontabili. Con i modelli locali diverse risposte agli esercizi 07, 08 e 10 arrivano a 8192 token senza codice (finish_reason `length`): 2 su 10 con qwen3.5:4b, 3 con qwen3:8b e qwen3.5:9b, 1 con inkling2mini (il 10), nessuna con gemma4:e4b. Le opzioni sono alzare `max_tokens` o provare `reasoning_effort` "low". Cambiare un parametro cambia l'impronta, quindi tutti i modelli vanno rieseguiti.
+2. Eseguire i Gemini (gemini-3.5-flash-lite, gemini-3.8-flash) con `npm run bench -- --tutti`, che salta i modelli già fatti: 14 chiamate ciascuno (prompt lungo e 13 esercizi) con 15 s di pausa, sotto il tetto di 15; dopo un 429 o un 503 (servizio sovraccarico) il banco si ferma e passa al modello successivo.
+3. Solo dopo aver provato tutti i modelli, valutare i parametri. Finché non sono stati provati tutti restano `max_tokens` 8192 e `reasoning_effort` "medium", così i risultati sono confrontabili. Con i modelli locali diverse risposte agli esercizi 07, 08 e 10 arrivano a 8192 token senza codice (finish_reason `length`): 2 su 10 con qwen3.5:4b, 3 con qwen3:8b e qwen3.5:9b, 1 con inkling2mini (il 10), nessuna con gemma4:e4b. Le opzioni sono alzare `max_tokens` o provare `reasoning_effort` "low". Cambiare un parametro cambia l'impronta, quindi tutti i modelli vanno rieseguiti.
 
 ## Origine
 

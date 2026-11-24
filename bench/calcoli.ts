@@ -434,8 +434,10 @@ export function rigaApi(e: Esecuzione): string {
 // Esito di ogni esercizio previsto, con gli esercizi raggruppati per categoria:
 // ✓ superato, ✗ fallito, – non eseguito (esecuzione incompleta o fermata).
 export function tabellaEsiti(esecuzioni: Esecuzione[], c: Confronto): string {
-  const gruppi = (["codice", "non codice"] as const).map((cat) => ({ cat, nomi: previsti(c, cat) })).filter((g) => g.nomi.length);
-  const intestazione = ["Modello", ...gruppi.flatMap((g) => [g.cat === "codice" ? "Codice" : "Non codice", ...g.nomi.map((n) => n.slice(0, 2))])];
+  const gruppi = (["codice", "non codice"] as const)
+    .map((cat) => ({ cat, titolo: cat === "codice" ? "Codice" : "Non codice", nomi: previsti(c, cat) }))
+    .filter((g) => g.nomi.length);
+  const intestazione = ["Modello", ...gruppi.flatMap((g) => [g.titolo, ...g.nomi.map((n) => n.slice(0, 2))])];
   const righe = esecuzioni.map((e) =>
     riga([
       e.modello,
@@ -443,7 +445,7 @@ export function tabellaEsiti(esecuzioni: Esecuzione[], c: Confronto): string {
     ]),
   );
   const legenda = gruppi
-    .map((g) => `${g.cat === "codice" ? "Codice" : "Non codice"}: ${g.nomi.map((n) => `${n.slice(0, 2)} ${n.slice(3)}${g.cat === "codice" ? "" : ` (${c.formati?.[n]})`}`).join(", ")}.`)
+    .map((g) => `${g.titolo}: ${g.nomi.map((n) => `${n.slice(0, 2)} ${n.slice(3)}${g.cat === "codice" ? "" : ` (${c.formati?.[n]})`}`).join(", ")}.`)
     .join(" ");
   return [`✓ superato, ✗ fallito, – non eseguito. ${legenda}\n`, [riga(intestazione), "|" + "---|".repeat(intestazione.length), ...righe].join("\n") + "\n"].join("\n");
 }
