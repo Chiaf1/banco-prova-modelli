@@ -6,7 +6,7 @@ Banco minimo che fa risolvere 13 esercizi a ogni modello (9 di codice, 4 con ris
 
 ## Comandi
 
-Nessuna dipendenza e nessun `npm install`: Node (≥ 22.18) esegue direttamente i `.ts` togliendo i tipi, e i test usano `node:test`.
+Nessuna dipendenza e nessun `npm install`: Node (≥ 23.6) esegue direttamente i `.ts` togliendo i tipi, e i test usano `node:test`.
 
 ```sh
 npm test                                          # test del banco (test/bench.test.ts)

@@ -17,7 +17,7 @@ Banco minimo per mettere alla prova modelli di linguaggio, locali e via API, sug
 
 ## Requisiti
 
-Node 22.18 o più recente (testato con Node 24). Nessuna dipendenza: Node esegue direttamente i file `.ts` e ha già un test runner incluso.
+Node 23.6 o più recente (testato con Node 24): è la prima versione con `--test-isolation`, che il banco usa per lanciare i test (nella linea 22 esiste solo `--experimental-test-isolation`). Nessuna dipendenza: Node esegue direttamente i file `.ts` e ha già un test runner incluso.
 
 Per i modelli: Ollama, il server di llama.cpp (`llama serve`) o una chiave API in `.env` (per Google AI Studio `GEMINI_API_KEY=...`; il file `.env` è nel `.gitignore`).
 

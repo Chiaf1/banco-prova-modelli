@@ -11,6 +11,6 @@
     "bench:riepilogo": "node bench/riepilogo.ts"
   },
   "engines": {
-    "node": ">=22.18"
+    "node": ">=23.6"
   }
 }
