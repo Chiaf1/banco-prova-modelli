@@ -61,21 +61,42 @@ test("size in sola lettura", () => {
   assert.equal(typeof d?.get, "function");
   assert.equal(d?.set, undefined);
 });
-// Letture di chiavi recenti e assenti: costano O(n) a una soluzione che scandisce un array.
-// Pochi sfratti: con Map + keys().next() molti sfratti dopo molte delete rallentano V8 anche
-// per una soluzione corretta.
-test("tempo costante con capacità grande", () => {
-  const n = 200_000;
+// Tempo per operazione (ns) su una cache piena di capacità n, con letture di chiavi recenti,
+// vecchie e assenti, aggiornamenti e sfratti. Blocchi da 410 operazioni ripetuti per almeno 30 ms;
+// vale la migliore di 3 misure, per ridurre il rumore.
+function nsPerOperazione(n: number): number {
   const c = new CacheLRU(n);
   for (let i = 0; i < n; i++) c.set(i, i);
-  for (let i = 0; i < n; i++) {
-    const k = n - 1 - (i % 1000);
-    if (c.get(k) !== k) assert.fail(`get(${k})`);
+  let prossima = n;
+  let ops = 0;
+  const blocco = () => {
+    for (let i = 0; i < 100; i++) {
+      c.get(prossima - 1 - (i % 50)); // recente
+      c.get(prossima - n + 1 + i); // tra le più vecchie
+      c.get(-1 - i); // assente
+      c.set(prossima - 2 - i, i); // aggiorna
+      if (i % 10 === 0) c.set(prossima++, 0); // sfratta la meno recente
+    }
+    ops += 410;
+  };
+  let migliore = Infinity;
+  for (let r = 0; r < 3; r++) {
+    ops = 0;
+    const inizio = performance.now();
+    do blocco(); while (performance.now() - inizio < 30);
+    migliore = Math.min(migliore, (performance.now() - inizio) / ops);
   }
-  for (let i = 0; i < n; i++) if (c.get(-1 - i) !== undefined) assert.fail(`get(${-1 - i})`);
-  for (let i = 0; i < 1000; i++) c.set(n + i, n + i);
   assert.equal(c.size, n);
-  assert.equal(c.has(999), false);
-  assert.equal(c.has(1000), true);
-  assert.equal(c.get(n + 999), n + 999);
+  assert.equal(c.get(prossima - 1), 0);
+  return migliore * 1e6;
+}
+
+// Indipendente dalla velocità della macchina: conta come cresce il tempo per operazione da
+// capacità 10_000 a 200_000. O(1) dà circa 2 (cache del processore), O(n) circa 20; soglia 6.
+test("tempo costante con capacità grande", (t) => {
+  const piccola = nsPerOperazione(10_000);
+  const grande = nsPerOperazione(200_000);
+  const misura = `tempo per operazione ${piccola.toFixed(0)} ns con 10_000, ${grande.toFixed(0)} ns con 200_000: ×${(grande / piccola).toFixed(1)}`;
+  t.diagnostic(misura);
+  assert.ok(grande / piccola < 6, misura);
 });
