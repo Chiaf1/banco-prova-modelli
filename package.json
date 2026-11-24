@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\"",
     "bench": "node --env-file-if-exists=.env bench/banco.ts",
-    "bench:verifica": "node bench/verifica.ts"
+    "bench:verifica": "node bench/verifica.ts",
+    "bench:riepilogo": "node bench/riepilogo.ts"
   },
   "engines": {
     "node": ">=22.18"

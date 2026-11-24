@@ -7,7 +7,6 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { chiamata, type EsitoChiamata, type ParametriChiamata } from "./api.ts";
 import {
-  aggiornaRiepilogo,
   confrontaHardware,
   dataEsecuzione,
   estraiCodice,
@@ -16,7 +15,8 @@ import {
   potenzaMedia,
   potenzaStabile,
   riassumi,
-  rigaRiepilogo,
+  rigaApi,
+  rigaLocale,
   tokenAlSecondo,
   tokenPromptAlSecondo,
   whIntegrati,
@@ -25,6 +25,7 @@ import {
 import { avviaMisuratore, CAMPO_POTENZA, INTERVALLO_MS, type Misuratore } from "./energia.ts";
 import { elencaEsercizi, eseguiTest, improntaEsercizi } from "./esegui.ts";
 import { promptEsercizio, testoLungo, VERSIONE_PROMPT } from "./prompt.ts";
+import { rigeneraRiepilogo } from "./riepilogo.ts";
 import {
   ambienteOllama,
   ollamaCaricati,
@@ -169,6 +170,13 @@ async function eseguiModello(nome: string): Promise<void> {
     parametri_chiamata: config.parametri_chiamata,
     pausa_s: pausaMs / 1000,
     energia: locale ? { fonte: "nvidia-smi", campo: CAMPO_POTENZA, intervallo_ms: INTERVALLO_MS } : null,
+    // Ciò che rende confrontabili modelli diversi (vedi Confronto in calcoli.ts); non entra nell'impronta.
+    confronto: {
+      parametri: config.parametri_chiamata,
+      esercizi: esercizi.map((e) => e.nome),
+      versione_prompt: VERSIONE_PROMPT,
+      impronta_esercizi: improntaEsercizi(esercizi),
+    },
   };
   const scrivi = (riga: Record<string, unknown>) => appendFileSync(fileJsonl, JSON.stringify({ ...riga, ...comune }) + "\n");
 
@@ -292,6 +300,7 @@ async function eseguiModello(nome: string): Promise<void> {
         primo_token_ms: e.primo_token_ms,
         totale_ms: e.totale_ms,
         token_uscita: e.token_uscita,
+        token_ragionamento: e.token_ragionamento,
         wh,
         finish_reason: e.finish_reason,
         ragionamento_visto: e.ragionamento.length > 0 || (e.token_ragionamento ?? 0) > 0,
@@ -303,7 +312,6 @@ async function eseguiModello(nome: string): Promise<void> {
         esercizio: es.nome,
         ...riga,
         token_ingresso: e.token_ingresso,
-        token_ragionamento: e.token_ragionamento,
         caratteri_ragionamento: e.ragionamento.length,
         codice_estratto: codice != null,
         test,
@@ -347,12 +355,9 @@ async function eseguiModello(nome: string): Promise<void> {
     console.log(`  nessun esercizio eseguito: riepilogo non aggiornato (dettagli in ${fileJsonl.replace(RADICE + "/", "")})`);
     throw new Fermata(`${nome}: nessun esercizio eseguito`);
   }
-  const fileRiepilogo = join(RISULTATI, "riepilogo.md");
-  writeFileSync(
-    fileRiepilogo,
-    aggiornaRiepilogo(existsSync(fileRiepilogo) ? readFileSync(fileRiepilogo, "utf8") : null, nome, rigaRiepilogo(riassunto)),
-  );
-  console.log(`  ${rigaRiepilogo(riassunto)}`);
+  const { esecuzioni: tutte } = rigeneraRiepilogo(config.parametri_chiamata, RISULTATI);
+  const questa = tutte.find((x) => x.modello === nome && x.data === data);
+  if (questa) console.log(`  ${questa.locale ? rigaLocale(questa) : rigaApi(questa)}`);
   console.log(`  riepilogo aggiornato: risultati/riepilogo.md`);
 }
 
