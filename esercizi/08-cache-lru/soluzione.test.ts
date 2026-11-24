@@ -61,13 +61,21 @@ test("size in sola lettura", () => {
   assert.equal(typeof d?.get, "function");
   assert.equal(d?.set, undefined);
 });
+// Letture di chiavi recenti e assenti: costano O(n) a una soluzione che scandisce un array.
+// Pochi sfratti: con Map + keys().next() molti sfratti dopo molte delete rallentano V8 anche
+// per una soluzione corretta.
 test("tempo costante con capacità grande", () => {
   const n = 200_000;
   const c = new CacheLRU(n);
   for (let i = 0; i < n; i++) c.set(i, i);
-  for (let i = 0; i < n; i++) c.get(i);
-  for (let i = n; i < 2 * n; i++) c.set(i, i);
+  for (let i = 0; i < n; i++) {
+    const k = n - 1 - (i % 1000);
+    if (c.get(k) !== k) assert.fail(`get(${k})`);
+  }
+  for (let i = 0; i < n; i++) if (c.get(-1 - i) !== undefined) assert.fail(`get(${-1 - i})`);
+  for (let i = 0; i < 1000; i++) c.set(n + i, n + i);
   assert.equal(c.size, n);
-  assert.equal(c.has(n - 1), false);
-  assert.equal(c.get(2 * n - 1), 2 * n - 1);
+  assert.equal(c.has(999), false);
+  assert.equal(c.has(1000), true);
+  assert.equal(c.get(n + 999), n + 999);
 });
