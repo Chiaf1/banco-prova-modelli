@@ -7,6 +7,7 @@ import {
   componiRiepilogo,
   confrontaHardware,
   costoEsecuzione,
+  descriviConfronto,
   costoPerSuperato,
   dataEsecuzione,
   estraiCodice,
@@ -284,6 +285,11 @@ test("chiaveConfronto: cambia con max_tokens o esercizi, non con l'ordine delle 
   assert.notEqual(chiaveConfronto(confronto({ versione_prompt: 2 })), k);
 });
 
+test("descriviConfronto: uno o più esercizi", () => {
+  assert.equal(descriviConfronto(confronto()), "temperature 0, max_tokens 8192, reasoning_effort medium; 2 esercizi (01-a … 02-b); prompt v1");
+  assert.equal(descriviConfronto(confronto({ esercizi: ["01-a"] })), "temperature 0, max_tokens 8192, reasoning_effort medium; 1 esercizio (01-a); prompt v1");
+});
+
 // Righe .jsonl minime, come le scrive il banco.
 const jsonl = (o: { modello?: string; data?: string; tipo?: string; costi?: (number | null | undefined)[]; confronto?: Confronto; superati?: boolean[] } = {}) => {
   const comune = { modello: o.modello ?? "m", data: o.data ?? "2026-11-24T20-00-00", avvio: { tipo: o.tipo ?? "api" }, parametri_chiamata: confronto().parametri, ...(o.confronto ? { confronto: o.confronto } : {}) };
@@ -373,7 +379,7 @@ test("componiRiepilogo: due tabelle per l'impronta corrente, le altre separate e
   assert.match(corrente, /^\| loc \|/m);
   assert.match(corrente, /^\| api1 \| 2026-11-24T20-00-00 \|/m);
   assert.doesNotMatch(corrente, /2026-11-25/);
-  assert.match(altre, /### .*1 esercizi .*\n\n#### Modelli via API\n\n.*\n.*\n\| api1 \| 2026-11-25T08-00-00 \|/);
+  assert.match(altre, /### .*1 esercizio .*\n\n#### Modelli via API\n\n.*\n.*\n\| api1 \| 2026-11-25T08-00-00 \|/);
   assert.doesNotMatch(altre, /Modelli locali/); // in un'altra impronta le tabelle vuote non compaiono
 });
 

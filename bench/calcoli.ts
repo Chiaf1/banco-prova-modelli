@@ -247,7 +247,8 @@ export function chiaveConfronto(c: Confronto): string {
 
 export function descriviConfronto(c: Confronto): string {
   const parametri = Object.entries(c.parametri).map(([k, v]) => `${k} ${v}`).join(", ");
-  const es = c.esercizi.length ? `${c.esercizi.length} esercizi (${c.esercizi[0]} … ${c.esercizi[c.esercizi.length - 1]})` : "nessun esercizio";
+  const n = c.esercizi.length;
+  const es = n === 0 ? "nessun esercizio" : n === 1 ? `1 esercizio (${c.esercizi[0]})` : `${n} esercizi (${c.esercizi[0]} … ${c.esercizi[n - 1]})`;
   return `${parametri}; ${es}; prompt v${c.versione_prompt}`;
 }
 
