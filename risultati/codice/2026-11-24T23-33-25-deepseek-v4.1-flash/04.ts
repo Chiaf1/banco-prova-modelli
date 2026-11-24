@@ -1,0 +1,15 @@
+export function contaParole(testo: string): Record<string, number> {
+  const risultato: Record<string, number> = {};
+  const parole = testo.match(/[\p{L}\p{N}]+/gu) ?? [];
+
+  for (const parola of parole) {
+    const chiave = parola.toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(risultato, chiave)) {
+      risultato[chiave]++;
+    } else {
+      risultato[chiave] = 1;
+    }
+  }
+
+  return risultato;
+}

@@ -1,0 +1,69 @@
+export class CacheLRU<K, V> {
+  private capacity: number;
+  private map: Map<K, V>;
+  private order: K[]; // mantiene le chiavi in ordine: meno recente all'inizio, più recente alla fine
+
+  constructor(capacita: number) {
+    if (!Number.isInteger(capacita) || capacita < 1) {
+      throw new RangeError("Capacità deve essere un intero >= 1");
+    }
+    this.capacity = capacita;
+    this.map = new Map();
+    this.order = [];
+  }
+
+  get(chiave: K): V | undefined {
+    if (!this.map.has(chiave)) {
+      return undefined;
+    }
+    
+    // Aggiorna l'ordine: sposta la chiave alla fine (più recente)
+    this.#updateRecent(chiave);
+    return this.map.get(chiave);
+  }
+
+  set(chiave: K, valore: V): void {
+    if (this.map.has(chiave)) {
+      // Aggiornamento: cambia il valore e aggiorna l'ordine
+      this.map.set(chiave, valore);
+      this.#updateRecent(chiave);
+    } else {
+      // Nuova chiave
+      if (this.map.size === this.capacity) {
+        // Rimuovi la chiave meno recente (prima dell'array)
+        const oldestKey = this.order.shift();
+        if (oldestKey !== undefined) {
+          this.map.delete(oldestKey);
+        }
+      }
+      
+      // Aggiungi la nuova chiave
+      this.map.set(chiave, valore);
+      this.order.push(chiave);
+    }
+  }
+
+  has(chiave: K): boolean {
+    return this.map.has(chiave);
+  }
+
+  get size(): number {
+    return this.map.size;
+  }
+
+  chiavi(): K[] {
+    // Restituisce le chiavi dalla meno recente alla più recente
+    return [...this.order];
+  }
+
+  // Sposta la chiave alla fine dell'array (più recente)
+  #updateRecent(chiave: K): void {
+    const index = this.order.indexOf(chiave);
+    if (index !== -1) {
+      // Rimuovi dalla posizione attuale
+      this.order.splice(index, 1);
+      // Aggiungi alla fine (più recente)
+      this.order.push(chiave);
+    }
+  }
+}

@@ -1,0 +1,30 @@
+export function fondiIntervalli(intervalli: [number, number][]): [number, number][] {
+  for (const [inizio, fine] of intervalli) {
+    if (!Number.isFinite(inizio) || !Number.isFinite(fine) || inizio > fine) {
+      throw new RangeError("Intervallo non valido");
+    }
+  }
+
+  if (intervalli.length === 0) {
+    return [];
+  }
+
+  const copia = intervalli.map(([a, b]) => [a, b] as [number, number]);
+  copia.sort((a, b) => a[0] - b[0]);
+
+  const risultato: [number, number][] = [];
+  let corrente: [number, number] = [copia[0][0], copia[0][1]];
+
+  for (let i = 1; i < copia.length; i++) {
+    const [inizio, fine] = copia[i];
+    if (inizio <= corrente[1]) {
+      corrente[1] = Math.max(corrente[1], fine);
+    } else {
+      risultato.push(corrente);
+      corrente = [inizio, fine];
+    }
+  }
+  risultato.push(corrente);
+
+  return risultato;
+}

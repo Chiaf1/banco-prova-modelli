@@ -1,0 +1,6 @@
+1. Verifica DPI prima del cambio formato su L3.
+2. Controlla alimentazione e nastro prima del cambio.
+3. Imposta formato nuovo e conferma impostazione.
+4. Verifica etichetta e scatola dopo il cambio.
+5. Registra anomalie e segnala blocco alla supervisione.
+6. Verifica registro finale e chiude ciclo di controllo.

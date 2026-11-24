@@ -1,0 +1,95 @@
+export function valuta(espressione: string): number {
+  let i = 0;
+  const s = espressione;
+
+  function errore(): never {
+    throw new SyntaxError("espressione non valida");
+  }
+
+  function saltaSpazi(): void {
+    while (i < s.length && s[i] === " ") i++;
+  }
+
+  function parseNumero(): number {
+    const start = i;
+    if (s[i] === ".") {
+      i++;
+      while (i < s.length && s[i] >= "0" && s[i] <= "9") i++;
+      if (i === start + 1) errore();
+    } else {
+      while (i < s.length && s[i] >= "0" && s[i] <= "9") i++;
+      if (i === start) errore();
+      if (s[i] === ".") {
+        i++;
+        while (i < s.length && s[i] >= "0" && s[i] <= "9") i++;
+      }
+    }
+    const testo = s.slice(start, i);
+    if (testo.includes(".") && testo.length > 1) {
+      // controlla che non ci siano spazi interni: già escluso perché ci fermiamo su spazio
+    }
+    return Number(testo);
+  }
+
+  function parseFattore(): number {
+    saltaSpazi();
+    if (i >= s.length) errore();
+    const c = s[i];
+    if (c === "+" || c === "-") {
+      i++;
+      const v = parseFattore();
+      return c === "-" ? -v : v;
+    }
+    if (c === "(") {
+      i++;
+      const v = parseEspressione();
+      saltaSpazi();
+      if (s[i] !== ")") errore();
+      i++;
+      return v;
+    }
+    if ((c >= "0" && c <= "9") || c === ".") {
+      return parseNumero();
+    }
+    errore();
+  }
+
+  function parseTermine(): number {
+    let v = parseFattore();
+    for (;;) {
+      saltaSpazi();
+      const c = s[i];
+      if (c === "*") {
+        i++;
+        v = v * parseFattore();
+      } else if (c === "/") {
+        i++;
+        v = v / parseFattore();
+      } else {
+        return v;
+      }
+    }
+  }
+
+  function parseEspressione(): number {
+    let v = parseTermine();
+    for (;;) {
+      saltaSpazi();
+      const c = s[i];
+      if (c === "+") {
+        i++;
+        v = v + parseTermine();
+      } else if (c === "-") {
+        i++;
+        v = v - parseTermine();
+      } else {
+        return v;
+      }
+    }
+  }
+
+  const risultato = parseEspressione();
+  saltaSpazi();
+  if (i !== s.length) errore();
+  return risultato;
+}

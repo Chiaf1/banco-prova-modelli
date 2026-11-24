@@ -1,0 +1,22 @@
+export function fondiIntervalli(intervalli: [number, number][]): [number, number][] {
+  const valid: [number, number][] = [];
+  for (const iv of intervalli) {
+    const s = iv[0];
+    const e = iv[1];
+    if (!Number.isFinite(s) || !Number.isFinite(e) || s > e) {
+      throw new RangeError("Intervallo non valido");
+    }
+    valid.push([s, e]);
+  }
+  valid.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const result: [number, number][] = [];
+  for (const [s, e] of valid) {
+    const last = result[result.length - 1];
+    if (last && s <= last[1]) {
+      if (e > last[1]) last[1] = e;
+    } else {
+      result.push([s, e]);
+    }
+  }
+  return result;
+}

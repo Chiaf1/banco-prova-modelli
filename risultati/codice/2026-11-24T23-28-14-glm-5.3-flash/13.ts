@@ -1,0 +1,157 @@
+export type Stato = "fermo" | "avvio" | "lavoro" | "pausa" | "allarme";
+
+export type Esito = {
+  stato: Stato;
+  pezzi: number;
+  gravita: number;
+  confermato: boolean;
+  rifiutati: { indice: number; evento: string; motivo: string }[];
+};
+
+const NOTI = new Set([
+  "start",
+  "pronto",
+  "pezzo",
+  "pausa",
+  "riprendi",
+  "stop",
+  "allarme",
+  "conferma",
+  "reset",
+]);
+
+export function simula(eventi: string[]): Esito {
+  let stato: Stato = "fermo";
+  let pezzi = 0;
+  let gravita = 0;
+  let confermato = false;
+  let statoPreAllarme: Stato = "fermo";
+  let rifiutiDiFila = 0;
+  const rifiutati: { indice: number; evento: string; motivo: string }[] = [];
+
+  const rifiuta = (indice: number, evento: string, motivo: string): void => {
+    rifiutati.push({ indice, evento, motivo });
+    if (stato !== "allarme") {
+      rifiutiDiFila++;
+      if (rifiutiDiFila === 3) {
+        rifiutiDiFila = 0;
+        statoPreAllarme = stato;
+        stato = "allarme";
+        gravita = 1;
+        confermato = false;
+      }
+    }
+  };
+
+  eventi.forEach((evento, indice) => {
+    if (stato === "allarme") {
+      if (evento === "allarme") {
+        gravita = Math.min(3, gravita + 1);
+        confermato = false;
+      } else if (evento === "conferma") {
+        if (confermato) {
+          rifiuta(indice, evento, "già confermato");
+        } else {
+          confermato = true;
+          rifiutiDiFila = 0;
+        }
+      } else if (evento === "riprendi") {
+        if (!confermato) {
+          rifiuta(indice, evento, "allarme da confermare");
+        } else if (gravita > 1) {
+          rifiuta(indice, evento, "gravità troppo alta");
+        } else {
+          stato = statoPreAllarme;
+          gravita = 0;
+          confermato = false;
+          rifiutiDiFila = 0;
+        }
+      } else if (evento === "reset") {
+        if (!confermato) {
+          rifiuta(indice, evento, "allarme da confermare");
+        } else {
+          stato = "fermo";
+          gravita = 0;
+          confermato = false;
+          rifiutiDiFila = 0;
+        }
+      } else if (NOTI.has(evento)) {
+        rifiuta(indice, evento, "non ammesso in allarme");
+      } else {
+        rifiuta(indice, evento, "sconosciuto");
+      }
+      return;
+    }
+
+    switch (evento) {
+      case "start":
+        if (stato === "fermo") {
+          stato = "avvio";
+          rifiutiDiFila = 0;
+        } else {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        }
+        break;
+      case "pronto":
+        if (stato === "avvio") {
+          stato = "lavoro";
+          rifiutiDiFila = 0;
+        } else {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        }
+        break;
+      case "pezzo":
+        if (stato === "lavoro") {
+          pezzi++;
+          rifiutiDiFila = 0;
+        } else {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        }
+        break;
+      case "pausa":
+        if (stato === "lavoro") {
+          stato = "pausa";
+          rifiutiDiFila = 0;
+        } else {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        }
+        break;
+      case "riprendi":
+        if (stato === "pausa") {
+          stato = "lavoro";
+          rifiutiDiFila = 0;
+        } else {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        }
+        break;
+      case "stop":
+        if (stato === "avvio" || stato === "lavoro" || stato === "pausa") {
+          stato = "fermo";
+          rifiutiDiFila = 0;
+        } else {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        }
+        break;
+      case "allarme":
+        statoPreAllarme = stato;
+        stato = "allarme";
+        gravita = 1;
+        confermato = false;
+        rifiutiDiFila = 0;
+        break;
+      default:
+        if (NOTI.has(evento)) {
+          rifiuta(indice, evento, `non ammesso in ${stato}`);
+        } else {
+          rifiuta(indice, evento, "sconosciuto");
+        }
+    }
+  });
+
+  if (stato !== "allarme") {
+    gravita = 0;
+    confermato = false;
+  }
+
+  return { stato, pezzi, gravita, confermato, rifiutati };
+}

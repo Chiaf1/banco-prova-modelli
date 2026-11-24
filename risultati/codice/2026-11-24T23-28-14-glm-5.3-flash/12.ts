@@ -1,0 +1,136 @@
+export function leggiCsv(testo: string, separatore?: string): string[][] {
+  const sep = separatore ?? ",";
+  if (sep.length !== 1 || sep === '"' || sep === "\r" || sep === "\n") {
+    throw new RangeError("separatore non valido");
+  }
+
+  const n = testo.length;
+  let i = 0;
+  let line = 1;
+  let col = 1;
+
+  const adv = (): void => {
+    const c = testo[i++];
+    if (c === "\n") {
+      line++;
+      col = 1;
+    } else {
+      col++;
+    }
+  };
+
+  const err = (l: number, c: number, motivo: string): never => {
+    throw new SyntaxError(`riga ${l}, colonna ${c}: ${motivo}`);
+  };
+
+  const rows: string[][] = [];
+  let expected = -1;
+
+  while (i < n) {
+    // salta le righe vuote
+    if (testo[i] === "\n") {
+      adv();
+      continue;
+    }
+    if (testo[i] === "\r") {
+      if (testo[i + 1] === "\n") {
+        adv();
+        adv();
+        continue;
+      }
+      err(line, col, "a capo non valido");
+    }
+
+    const startLine = line;
+    const fields: string[] = [];
+
+    fieldLoop: while (true) {
+      let field = "";
+
+      if (testo[i] === '"') {
+        // campo tra virgolette
+        const openLine = line;
+        const openCol = col;
+        adv(); // virgoletta di apertura
+        while (true) {
+          if (i >= n) err(openLine, openCol, "virgolette non chiuse");
+          if (testo[i] === '"') {
+            if (testo[i + 1] === '"') {
+              field += '"';
+              adv();
+              adv();
+            } else {
+              adv(); // virgoletta di chiusura
+              break;
+            }
+          } else {
+            field += testo[i];
+            adv();
+          }
+        }
+        // dopo la chiusura: separatore, a capo o fine testo
+        if (i >= n) {
+          fields.push(field);
+          break fieldLoop;
+        }
+        const c = testo[i];
+        if (c === sep) {
+          fields.push(field);
+          adv();
+          continue;
+        }
+        if (c === "\n") {
+          fields.push(field);
+          adv();
+          break fieldLoop;
+        }
+        if (c === "\r") {
+          if (testo[i + 1] === "\n") {
+            fields.push(field);
+            adv();
+            adv();
+            break fieldLoop;
+          }
+          err(line, col, "a capo non valido");
+        }
+        err(line, col, "carattere dopo le virgolette di chiusura");
+      } else {
+        // campo senza virgolette
+        while (i < n) {
+          const c = testo[i];
+          if (c === sep || c === "\n" || c === "\r") break;
+          if (c === '"') err(line, col, "virgolette in un campo senza virgolette");
+          field += c;
+          adv();
+        }
+        fields.push(field);
+        if (i >= n) break fieldLoop;
+        const c = testo[i];
+        if (c === sep) {
+          adv();
+          continue;
+        }
+        if (c === "\n") {
+          adv();
+          break fieldLoop;
+        }
+        // c === '\r'
+        if (testo[i + 1] === "\n") {
+          adv();
+          adv();
+          break fieldLoop;
+        }
+        err(line, col, "a capo non valido");
+      }
+    }
+
+    if (expected === -1) {
+      expected = fields.length;
+    } else if (fields.length !== expected) {
+      err(startLine, 1, `attesi ${expected} campi, trovati ${fields.length}`);
+    }
+    rows.push(fields);
+  }
+
+  return rows;
+}

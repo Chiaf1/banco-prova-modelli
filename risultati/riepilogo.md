@@ -16,7 +16,7 @@ Le esecuzioni con un'impronta diversa da quella corrente sono in fondo, separate
 
 ## Impronta corrente
 
-temperature 0, max_tokens 8192, reasoning_effort medium; 13 esercizi (04-conta-parole … 18-oee-turno); prompt v2 (chiave 33f719aa2f84024f)
+temperature 0, max_tokens 8192, reasoning_effort medium; 13 esercizi (04-conta-parole … 18-oee-turno); prompt v2 (chiave 3c2aead41058eef7)
 
 ### Modelli locali
 
@@ -24,7 +24,25 @@ Nessuna esecuzione.
 
 ### Modelli via API
 
-Nessuna esecuzione.
+| Modello | Data | Superati | Codice | Non codice | Troncati | Token uscita medi | Token ragionamento medi | Tempo medio (s) | Costo totale ($) | Costo per superato ($) | Note |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| glm-5.3-flash | 2026-11-24T23-28-14 | 11/13 | 8/9 | 3/4 | 0 | 960 | 458 | 5,0 | 0,0064 | 0,00058 | Remoto: energia non misurata; primo token e token/s comprendono la rete. |
+| inkling-2-mini | 2026-11-24T23-29-21 | 9/13 | 5/9 | 4/4 | 4 | 3892 | 3622 | 18,6 | 0,0162 | 0,00180 | Remoto: energia non misurata; primo token e token/s comprendono la rete. Stesso modello di inkling2mini locale (IQ4_NL su llama.cpp): confronto quantizzato vs servito. Più provider a prezzi diversi, OpenRouter sceglie. |
+| deepseek-v4.1-flash | 2026-11-24T23-33-25 | 9/13 | 5/9 | 4/4 | 4 | 4218 | 3980 | 22,0 | 0,0347 | 0,00385 | Remoto: energia non misurata; primo token e token/s comprendono la rete. Più provider: OpenRouter sceglie, i tempi possono variare tra un run e l'altro. |
+| minimax-m3 | 2026-11-24T23-38-45 | 8/13 | 4/9 | 4/4 | 4 | 4334 | 4002 | 31,1 | 0,0782 | 0,00978 | Remoto: energia non misurata; primo token e token/s comprendono la rete. Ragiona molto: occhio ai token in uscita. |
+| qwen3-coder-next | 2026-11-24T23-38-13 | 2/13 (incompleto) | 2/9 | 0/4 | 0 | 496 | 0 | 7,4 | 0,0024 | 0,00120 | Remoto: energia non misurata; primo token e token/s comprendono la rete. Modello di coding non ragionante: reasoning_effort probabilmente ignorato. nessun ragionamento osservato: reasoning_effort ignorato o modello che non ragiona interrotto: HTTP 429 (limite di richieste): HTTP 429: {"error":{"message":"Provider returned error","code":429,"metadata":{"raw":"qwen/qwen3-coder-next is temporarily rate-limited upstream. Please retry shortly, or add your own provider key to use your own limits: https://openrouter.ai/workspaces/default/byok","provider_name":"Parasail","is_byok":false,"provider_error_code":"429","limit_source":"upstream_provider_shared_pool","remedy_hint":"Retry shortly, add your own provider key to use your own limits (https://openrouter.ai/workspaces/default/byo |
+
+### Esiti per esercizio
+
+✓ superato, ✗ fallito, – non eseguito. Codice: 04 conta-parole, 07 numeri-romani, 08 cache-lru, 09 fondi-intervalli, 10 valuta-espressioni, 11 giorni-lavorativi, 12 csv, 13 ciclo-macchina, 14 diff-righe. Non codice: 15 rapporto-intervento (json), 16 scelta-tool (json), 17 vincoli-testo (testo), 18 oee-turno (json).
+
+| Modello | Codice | 04 | 07 | 08 | 09 | 10 | 11 | 12 | 13 | 14 | Non codice | 15 | 16 | 17 | 18 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| glm-5.3-flash | 8/9 | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | 3/4 | ✓ | ✓ | ✗ | ✓ |
+| inkling-2-mini | 5/9 | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✓ | 4/4 | ✓ | ✓ | ✓ | ✓ |
+| deepseek-v4.1-flash | 5/9 | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | 4/4 | ✓ | ✓ | ✓ | ✓ |
+| minimax-m3 | 4/9 | ✓ | ✓ | ✗ | ✓ | ✗ | ✗ | ✗ | ✓ | ✗ | 4/4 | ✓ | ✓ | ✓ | ✓ |
+| qwen3-coder-next | 2/9 | ✗ | ✓ | ✗ | ✓ | – | – | – | – | – | 0/4 | – | – | – | – |
 
 ## Altre impronte
 
@@ -38,7 +56,7 @@ Esecuzioni non confrontabili con quelle sopra.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | gemma4:e4b | 2026-11-24T21-52-09 | 1/1 | 1/1 | – | 158,4 | 0,12 | 5,6 | 870 | 0,318 | 0,3181 | 6,2 | 1814 (4143) | sì | 0 | Ollama: reasoning_effort accende il ragionamento (con "none" lo spegne); non è verificato che medium sia diverso da low o high per questo modello. |
 
-### temperature 0, max_tokens 8192, reasoning_effort medium; 10 esercizi (01-somma-pari … 10-valuta-espressioni); prompt v1 (chiave 7d1ea03f2582808c)
+### temperature 0, max_tokens 8192, reasoning_effort medium; 10 esercizi (01-somma-pari … 10-valuta-espressioni); prompt v1 (chiave 014924cc6977a609)
 
 #### Modelli locali
 
