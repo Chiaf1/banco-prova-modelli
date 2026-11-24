@@ -14,7 +14,13 @@ const VERSIONE_PROMPT_FILE_VECCHI = 1;
 
 export function confrontoCorrente(parametri: ParametriChiamata): Confronto {
   const esercizi = elencaEsercizi();
-  return { parametri, esercizi: esercizi.map((e) => e.nome), versione_prompt: VERSIONE_PROMPT, impronta_esercizi: improntaEsercizi(esercizi) };
+  return {
+    parametri,
+    esercizi: esercizi.map((e) => e.nome),
+    formati: Object.fromEntries(esercizi.map((e) => [e.nome, e.formato])),
+    versione_prompt: VERSIONE_PROMPT,
+    impronta_esercizi: improntaEsercizi(esercizi),
+  };
 }
 
 export function leggiEsecuzioni(cartella = RISULTATI): Esecuzione[] {

@@ -9,7 +9,9 @@ import { chiamata, type EsitoChiamata, type ParametriChiamata } from "./api.ts";
 import {
   confrontaHardware,
   dataEsecuzione,
-  estraiCodice,
+  ESTENSIONE,
+  estraiRisposta,
+  LINGUAGGIO,
   impronta,
   nomeFile,
   potenzaMedia,
@@ -150,8 +152,8 @@ async function eseguiModello(nome: string): Promise<void> {
 
   const data = dataEsecuzione(new Date());
   const fileJsonl = join(RISULTATI, `${data}-${nomeFile(nome)}.jsonl`);
-  const cartellaCodice = join(RISULTATI, "codice", `${data}-${nomeFile(nome)}`);
-  mkdirSync(cartellaCodice, { recursive: true });
+  const cartellaRisposte = join(RISULTATI, "codice", `${data}-${nomeFile(nome)}`);
+  mkdirSync(cartellaRisposte, { recursive: true });
 
   const hardware = rilevaHardware();
   const differenze = confrontaHardware(hardware, readFileSync(join(RADICE, "note", "hardware.md"), "utf8"));
@@ -174,6 +176,7 @@ async function eseguiModello(nome: string): Promise<void> {
     confronto: {
       parametri: config.parametri_chiamata,
       esercizi: esercizi.map((e) => e.nome),
+      formati: Object.fromEntries(esercizi.map((e) => [e.nome, e.formato])),
       versione_prompt: VERSIONE_PROMPT,
       impronta_esercizi: improntaEsercizi(esercizi),
     },
@@ -284,17 +287,18 @@ async function eseguiModello(nome: string): Promise<void> {
 
     // ---- esercizi ----
     for (const es of esercizi) {
-      const e = await chiama(promptEsercizio(es.consegna, es.firma), config.parametri_chiamata);
+      const e = await chiama(promptEsercizio(es.consegna, es.formato, es.firma), config.parametri_chiamata);
       const wh = await energia(e);
-      writeFileSync(join(cartellaCodice, `${es.numero}.risposta.md`), e.testo);
-      const codice = estraiCodice(e.testo);
+      writeFileSync(join(cartellaRisposte, `${es.numero}.risposta.md`), e.testo);
+      const risposta = estraiRisposta(e.testo, es.formato);
       let test = null;
-      if (codice != null) {
-        const file = join(cartellaCodice, `${es.numero}.ts`);
-        writeFileSync(file, codice);
+      if (risposta != null) {
+        const file = join(cartellaRisposte, `${es.numero}.${ESTENSIONE[es.formato]}`);
+        writeFileSync(file, risposta);
         test = eseguiTest(es, file);
       }
       const riga: RigaEsercizio = {
+        formato: es.formato,
         superato: test?.superato ?? false,
         token_al_secondo: tokenAlSecondo(e.token_uscita, e.totale_ms, e.primo_token_ms),
         primo_token_ms: e.primo_token_ms,
@@ -313,14 +317,14 @@ async function eseguiModello(nome: string): Promise<void> {
         ...riga,
         token_ingresso: e.token_ingresso,
         caratteri_ragionamento: e.ragionamento.length,
-        codice_estratto: codice != null,
+        risposta_estratta: risposta != null,
         test,
         usage: e.usage,
         timings: e.timings,
         inizio: e.inizio,
         fine: e.fine,
       });
-      const esito = e.errore ? `ERRORE API` : codice == null ? "nessun blocco ts" : test!.superato ? "superato" : `fallito (${test!.pass ?? 0} ok, ${test!.fail ?? "?"} ko${test!.timeout ? ", timeout" : ""})`;
+      const esito = e.errore ? `ERRORE API` : risposta == null ? `nessun blocco ${LINGUAGGIO[es.formato]}` : test!.superato ? "superato" : `fallito (${test!.pass ?? 0} ok, ${test!.fail ?? "?"} ko${test!.timeout ? ", timeout" : ""})`;
       console.log(
         `  ${es.nome}: ${esito} | ${s(e.totale_ms)} s, primo token ${s(e.primo_token_ms)} s, ` +
           `${e.token_ingresso ?? "–"}→${e.token_uscita ?? "–"} token, ${n1(riga.token_al_secondo)} tok/s, ` +

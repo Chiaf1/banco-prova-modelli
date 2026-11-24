@@ -1,8 +1,28 @@
 // Testi mandati ai modelli. Se cambi qualcosa qui, alza VERSIONE_PROMPT:
 // entra nell'impronta e fa rieseguire i modelli già provati.
-export const VERSIONE_PROMPT = 1;
+import { LINGUAGGIO, type Formato } from "./calcoli.ts";
 
-export function promptEsercizio(consegna: string, firma: string): string {
+// v2: prompt per le risposte in json e in testo (quello del codice è invariato).
+export const VERSIONE_PROMPT = 2;
+
+export function promptEsercizio(consegna: string, formato: Formato, firma: string | null): string {
+  if (formato === "codice") return promptCodice(consegna, firma ?? "");
+  const blocco = "```" + LINGUAGGIO[formato];
+  const contenuto =
+    formato === "json"
+      ? "Il blocco deve contenere solo JSON valido: niente commenti, niente virgole finali, niente testo prima o dopo."
+      : "Il blocco deve contenere solo il testo richiesto, senza titoli, commenti o righe in più.";
+  return `Risolvi l'esercizio seguente.
+
+${consegna.trim()}
+
+Regole:
+- Scrivi la risposta finale in un solo blocco ${blocco}. Viene letto solo il primo blocco ${blocco}: il resto della risposta è ignorato.
+- ${contenuto}
+- La risposta verrà controllata da un programma.`;
+}
+
+function promptCodice(consegna: string, firma: string): string {
   return `Risolvi l'esercizio seguente in TypeScript.
 
 ${consegna.trim()}

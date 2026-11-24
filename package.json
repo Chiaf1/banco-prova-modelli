@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Banco minimo: 9 esercizi di coding a ogni modello, con velocità, token, energia della GPU e accuratezza.",
+  "description": "Banco minimo: 13 esercizi (9 di codice, 4 in JSON o testo) a ogni modello, con velocità, token, energia della GPU e accuratezza.",
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\"",
     "bench": "node --env-file-if-exists=.env bench/banco.ts",
