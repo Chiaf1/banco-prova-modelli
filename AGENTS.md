@@ -12,23 +12,26 @@ Nessuna dipendenza e nessun `npm install`: Node (≥ 22.18) esegue direttamente 
 npm test                                          # test del banco (test/bench.test.ts)
 npm run bench:verifica                            # i test degli esercizi passano con riferimento.ts e falliscono con firma.ts
 npm run bench -- --model qwen3.5:4b --esercizi 2  # prova veloce su un modello
+npm run bench:riepilogo                           # rigenera risultati/riepilogo.md dai .jsonl, senza chiamare modelli
 node --test --test-name-pattern="whIntegrati" test/bench.test.ts
 ```
 
 ## File
 
 - `bench/modelli.json`: modelli, parametri di avvio e di chiamata, prompt lungo.
-- `bench/calcoli.ts`: funzioni pure (estrazione del codice, medie, token/s, Wh, riepilogo), testate in `test/bench.test.ts`.
+- `bench/calcoli.ts`: funzioni pure (estrazione del codice, medie, token/s, Wh, costo, chiave di confronto, riepilogo), testate in `test/bench.test.ts`.
+- `bench/riepilogo.ts`: legge tutti i `.jsonl` e riscrive `risultati/riepilogo.md` (due leaderboard: locali e API). Il banco lo chiama a fine esecuzione.
 - `bench/api.ts`: chiamata in streaming a un endpoint compatibile OpenAI.
 - `bench/banco.ts`: il programma; `energia.ts` (nvidia-smi), `sistema.ts` (hardware, Ollama), `esegui.ts` (test in sandbox), `prompt.ts` (testi mandati ai modelli).
 - `esercizi/NN-nome/`: `consegna.md`, `firma.ts`, `soluzione.test.ts`, `riferimento.ts`. I loro test non entrano in `npm test`.
-- `risultati/`: scritti dal banco, non modificarli a mano.
+- `risultati/`: scritti dal banco, non modificarli a mano. Il riepilogo si rifà con `npm run bench:riepilogo`.
 - `note/`: scheda del PC di prova (il banco la confronta a ogni esecuzione) e messa a punto di Inkling.
 
 ## Regole
 
 - Se cambi un testo in `bench/prompt.ts` alza `VERSIONE_PROMPT`. Se cambi un esercizio lancia `npm run bench:verifica`.
 - La chiave Gemini sta in `.env` (`GEMINI_API_KEY`): non stamparla e non metterla nella repo.
+- Il costo delle API viene solo da `usage.cost` nei `.jsonl`: se manca la cella è "–", mai stimarlo da prezzi scritti a mano.
 - Google free tier: niente nuovi tentativi dopo un 429 o un 503 (il banco si ferma), pausa tra le chiamate e tetto di chiamate in `modelli.json`.
 - Se cambia l'hardware o una versione (driver, Ollama, llama.cpp) aggiorna `note/hardware.md`: le misure vecchie e nuove non sono più confrontabili alla pari.
 

@@ -22,6 +22,7 @@ npm run bench -- --tutti                           # tutti i modelli non ancora 
 npm run bench -- --model qwen3:8b --forza          # riesegue anche se già fatto
 npm test                                           # test del banco
 npm run bench:verifica                             # i test degli esercizi passano con le soluzioni di riferimento
+npm run bench:riepilogo                            # rigenera risultati/riepilogo.md dai .jsonl, senza chiamare modelli
 ```
 
 Un modello già eseguito con le stesse impostazioni (configurazione, parametri, prompt, esercizi) viene saltato. Per provarne uno nuovo basta aggiungerlo a `bench/modelli.json` e lanciare `--tutti`.
@@ -33,6 +34,17 @@ Per ogni esercizio il modello riceve consegna e firma e risponde con il codice. 
 Parametri uguali per tutti: `temperature` 0, `max_tokens` 8192, `reasoning_effort` "medium".
 
 Misure per esercizio: tempo totale, tempo al primo token (ragionamento compreso), token in ingresso e in uscita dall'usage dell'API, token/s = token in uscita / (totale − primo token), energia della GPU (nvidia-smi ogni 500 ms, integrata sulla chiamata), superato sì/no. Per ogni modello anche la potenza a riposo e la velocità di lettura di un prompt di circa 4000 token.
+
+Per i modelli via API conta anche il costo: la somma di `usage.cost` riportato dall'API (OpenRouter) su tutte le chiamate del run, prompt lungo compreso. Se l'API non lo riporta (es. Gemini) la cella resta "–": il costo non viene mai stimato da un listino.
+
+## Riepilogo
+
+[risultati/riepilogo.md](risultati/riepilogo.md) viene rigenerato per intero da tutti i `.jsonl` a fine di ogni `npm run bench`, oppure a mano con `npm run bench:riepilogo`. Ha due leaderboard:
+
+- modelli locali: superati, tok/s, primo token, tempo, token in uscita, Wh, riposo, prompt tok/s, troncati; ordinati per superati e poi tempo medio;
+- modelli via API: superati, troncati, token in uscita e di ragionamento medi, tempo medio, costo totale e costo per esercizio superato; ordinati per superati e poi costo per superato.
+
+Per ogni modello vale l'ultima esecuzione con l'impronta di confronto corrente: parametri di chiamata, esercizi, versione del prompt (dal campo `confronto` dei `.jsonl`; i file più vecchi lo ricavano dalle loro righe). Le esecuzioni con un'impronta diversa, per esempio con meno esercizi o un altro `max_tokens`, restano visibili in fondo, in sezioni separate.
 
 Un modello alla volta: il banco scarica i modelli di Ollama prima e dopo, e controlla che il server llama.cpp sia spento quando usa Ollama (e viceversa). Ollama deve avere `OLLAMA_CONTEXT_LENGTH=16384` nel servizio: il banco lo controlla.
 
