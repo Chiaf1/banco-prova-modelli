@@ -1,23 +1,33 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  aggiornaRiepilogo,
+  chiaveConfronto,
+  classificaApi,
+  classificaLocali,
+  componiRiepilogo,
   confrontaHardware,
+  costoEsecuzione,
+  costoPerSuperato,
   dataEsecuzione,
   estraiCodice,
   formato,
   impronta,
   leggiDataNvidia,
+  leggiEsecuzione,
   leggiTap,
   media,
   nomeFile,
   potenzaMedia,
   potenzaStabile,
   riassumi,
-  rigaRiepilogo,
+  rigaApi,
+  rigaLocale,
   tokenAlSecondo,
+  ultimaPerModello,
   tokenPromptAlSecondo,
   whIntegrati,
+  type Confronto,
+  type Esecuzione,
   type RigaEsercizio,
 } from "../bench/calcoli.ts";
 import { leggiSse } from "../bench/api.ts";
@@ -219,6 +229,7 @@ test("riassumi: medie, somme e conteggi", () => {
   vicino(r.media_primo_token_s, 2);
   vicino(r.media_totale_s, 6);
   vicino(r.media_token_uscita, 60);
+  assert.equal(r.media_token_ragionamento, null);
   vicino(r.wh_totali, 0.04);
   vicino(r.media_wh, 0.02);
   assert.equal(r.troncati, 1);
@@ -226,16 +237,148 @@ test("riassumi: medie, somme e conteggi", () => {
   assert.equal(r.ragiona, "in parte");
 });
 
-test("rigaRiepilogo e aggiornaRiepilogo: sostituisce la riga dello stesso modello", () => {
-  const r1 = rigaRiepilogo(riassumi([riga({})], { ...extra, modello: "a" }));
-  const r2 = rigaRiepilogo(riassumi([riga({})], { ...extra, modello: "b", completo: false }));
-  assert.match(r1, /^\| a \| 2026-11-22T10-00-00 \| 1\/1 \| 10,0 \| 1,00 \| 5,0 \| 40 \| 0,010 \| 0,0100 \| 12,3 \| 1500 \(4012\) \| sì \| 0 \|  \|$/);
-  assert.match(r2, /\| 1\/1 \(incompleto\) \|/);
-  let testo = aggiornaRiepilogo(null, "a", r1);
-  testo = aggiornaRiepilogo(testo, "b", r2);
-  const r1nuova = r1.replace("10,0", "99,0");
-  testo = aggiornaRiepilogo(testo, "a", r1nuova);
-  const righe = testo.split("\n").filter((l) => /^\| [ab] \|/.test(l));
-  assert.deepEqual(righe, [r1nuova, r2]);
-  assert.equal(testo.split("\n").filter((l) => l.startsWith("| Modello")).length, 1);
+test("riassumi: token di ragionamento medi ignorano i null", () => {
+  const r = riassumi([riga({ token_ragionamento: 100 }), riga({ token_ragionamento: null }), riga({ token_ragionamento: 300 })], extra);
+  vicino(r.media_token_ragionamento, 200);
+});
+
+// ---- costo ----
+
+test("costoEsecuzione: somma usage.cost", () => {
+  vicino(costoEsecuzione([{ cost: 0.0005794 }, { cost: 0.00007405 }, { cost: 0.00006508 }]), 0.00071853);
+});
+
+test("costoEsecuzione: chiamate senza usage non entrano, costo a zero sì", () => {
+  vicino(costoEsecuzione([null, { cost: 0.001 }, undefined, { cost: 0 }]), 0.001);
+});
+
+test("costoEsecuzione: senza cost in un usage (es. Gemini) è null, mai stimato", () => {
+  assert.equal(costoEsecuzione([{ prompt_tokens: 250, completion_tokens: 870 }]), null);
+  assert.equal(costoEsecuzione([{ cost: 0.001 }, { prompt_tokens: 250 }]), null);
+  assert.equal(costoEsecuzione([{ cost: "0.001" }]), null);
+  assert.equal(costoEsecuzione([]), null);
+  assert.equal(costoEsecuzione([null, null]), null);
+});
+
+test("costoPerSuperato", () => {
+  vicino(costoPerSuperato(0.009, 9), 0.001);
+  assert.equal(costoPerSuperato(0.009, 0), null);
+  assert.equal(costoPerSuperato(null, 9), null);
+});
+
+// ---- riepilogo ----
+
+const confronto = (o: Partial<Confronto> = {}): Confronto => ({
+  parametri: { temperature: 0, max_tokens: 8192, reasoning_effort: "medium" },
+  esercizi: ["01-a", "02-b"],
+  versione_prompt: 1,
+  impronta_esercizi: "abc",
+  ...o,
+});
+
+test("chiaveConfronto: cambia con max_tokens o esercizi, non con l'ordine delle chiavi", () => {
+  const k = chiaveConfronto(confronto());
+  assert.equal(chiaveConfronto({ impronta_esercizi: "abc", versione_prompt: 1, esercizi: ["01-a", "02-b"], parametri: { reasoning_effort: "medium", max_tokens: 8192, temperature: 0 } }), k);
+  assert.notEqual(chiaveConfronto(confronto({ parametri: { temperature: 0, max_tokens: 16384, reasoning_effort: "medium" } })), k);
+  assert.notEqual(chiaveConfronto(confronto({ esercizi: ["01-a"] })), k);
+  assert.notEqual(chiaveConfronto(confronto({ versione_prompt: 2 })), k);
+});
+
+// Righe .jsonl minime, come le scrive il banco.
+const jsonl = (o: { modello?: string; data?: string; tipo?: string; costi?: (number | null | undefined)[]; confronto?: Confronto; superati?: boolean[] } = {}) => {
+  const comune = { modello: o.modello ?? "m", data: o.data ?? "2026-11-24T20-00-00", avvio: { tipo: o.tipo ?? "api" }, parametri_chiamata: confronto().parametri, ...(o.confronto ? { confronto: o.confronto } : {}) };
+  const usage = (c: number | null | undefined) => (c === undefined ? { prompt_tokens: 1 } : c === null ? null : { cost: c });
+  const costi = o.costi ?? [0.5, 0.25, 0.25];
+  const sup = o.superati ?? [true, false];
+  return [
+    { tipo: "prompt_lungo", usage: usage(costi[0]), ...comune },
+    ...sup.map((s, i) => ({ tipo: "esercizio", esercizio: ["01-a", "02-b"][i], ...riga({ superato: s, token_ragionamento: 10 * (i + 1) }), usage: usage(costi[i + 1]), ...comune })),
+    { tipo: "fine", riassunto: { riposo_w: null, prompt_token_al_secondo: 4000, prompt_token: 4800, completo: true, note: "nota" }, ...comune },
+  ];
+};
+// undefined: usage senza cost (come Gemini); null: chiamata senza usage.
+const SENZA_COST = [undefined, undefined, undefined];
+const predefinito = () => ({ versione_prompt: 1, impronta_esercizi: "abc" });
+
+test("leggiEsecuzione: ricalcola dai .jsonl, costo dal prompt lungo e dagli esercizi", () => {
+  const e = leggiEsecuzione(jsonl(), predefinito)!;
+  assert.equal(e.modello, "m");
+  assert.equal(e.locale, false);
+  assert.equal(e.riassunto.superati, 1);
+  assert.equal(e.riassunto.esercizi, 2);
+  vicino(e.riassunto.media_token_ragionamento, 15);
+  vicino(e.costo_usd, 1);
+  assert.equal(e.riassunto.note, "nota");
+  assert.deepEqual(e.confronto, confronto()); // file vecchio: ricavato da parametri, righe e predefinito
+  assert.equal(e.chiave, chiaveConfronto(confronto()));
+});
+
+test("leggiEsecuzione: usa il campo confronto se c'è; senza fine o esercizi è null", () => {
+  const c = confronto({ esercizi: ["01-a", "02-b", "03-c"] });
+  assert.deepEqual(leggiEsecuzione(jsonl({ confronto: c }), predefinito)!.confronto, c);
+  assert.equal(leggiEsecuzione(jsonl().filter((r) => r.tipo !== "fine"), predefinito), null);
+  assert.equal(leggiEsecuzione(jsonl().filter((r) => r.tipo !== "esercizio"), predefinito), null);
+  assert.equal(leggiEsecuzione(jsonl({ tipo: "ollama", costi: [null, null, null] }), predefinito)!.locale, true);
+});
+
+test("leggiEsecuzione: senza usage.cost il costo è null", () => {
+  assert.equal(leggiEsecuzione(jsonl({ costi: SENZA_COST }), predefinito)!.costo_usd, null);
+});
+
+const esec = (o: Parameters<typeof jsonl>[0]) => leggiEsecuzione(jsonl(o), predefinito)!;
+
+test("ultimaPerModello: vale la data più recente", () => {
+  const u = ultimaPerModello([esec({ modello: "a", data: "2026-11-24T10-00-00" }), esec({ modello: "a", data: "2026-11-24T11-00-00" }), esec({ modello: "b" })]);
+  assert.deepEqual(u.map((e) => `${e.modello} ${e.data}`).sort(), ["a 2026-11-24T11-00-00", "b 2026-11-24T20-00-00"]);
+});
+
+test("classificaApi: superati, poi costo per superato, '–' in fondo", () => {
+  const es = [
+    esec({ modello: "caro", costi: [1, 1, 1] }),
+    esec({ modello: "senza", costi: SENZA_COST }),
+    esec({ modello: "economico", costi: [0.1, 0.1, 0.1] }),
+    esec({ modello: "bravo", costi: [9, 9, 9], superati: [true, true] }),
+  ];
+  assert.deepEqual(classificaApi(es).map((e) => e.modello), ["bravo", "economico", "caro", "senza"]);
+});
+
+test("classificaLocali: superati, poi tempo medio", () => {
+  const lento = jsonl({ modello: "lento", tipo: "ollama" }).map((r) => (r.tipo === "esercizio" ? { ...r, totale_ms: 9000 } : r));
+  const es = [leggiEsecuzione(lento, predefinito)!, esec({ modello: "veloce", tipo: "ollama" }), esec({ modello: "bravo", tipo: "ollama", superati: [true, true] })];
+  assert.deepEqual(classificaLocali(es).map((e) => e.modello), ["bravo", "veloce", "lento"]);
+});
+
+test("rigaLocale e rigaApi: celle e formati", () => {
+  const l = esec({ tipo: "llamacpp", superati: [true, true] });
+  assert.equal(rigaLocale(l), "| m | 2026-11-24T20-00-00 | 2/2 | 10,0 | 1,00 | 5,0 | 40 | 0,020 | 0,0100 | – | 4000 (4800) | sì | 0 | nota |");
+  const a = esec({ costi: [0.0005794, 0.00007405, 0.00006508] });
+  assert.equal(rigaApi(a), "| m | 2026-11-24T20-00-00 | 1/2 | 0 | 40 | 15 | 5,0 | 0,0007 | 0,00072 | nota |");
+  const inc = jsonl().map((r) => (r.tipo === "fine" ? { ...r, riassunto: { ...r.riassunto, completo: false } } : r));
+  assert.match(rigaApi(leggiEsecuzione(inc, predefinito)!), /\| 1\/2 \(incompleto\) \|/);
+});
+
+test("componiRiepilogo: due tabelle per l'impronta corrente, le altre separate e non sovrascritte", () => {
+  const altra = confronto({ esercizi: ["01-a"] });
+  const testo = componiRiepilogo(
+    [
+      esec({ modello: "loc", tipo: "ollama" }),
+      esec({ modello: "api1" }),
+      esec({ modello: "api1", data: "2026-11-25T08-00-00", confronto: altra }), // più recente ma con un'altra impronta
+    ],
+    confronto(),
+  );
+  const [corrente, altre] = testo.split("## Altre impronte");
+  assert.match(corrente, /### Modelli locali\n\n\| Modello \| Data \| Superati \| tok\/s medi/);
+  assert.match(corrente, /### Modelli via API\n\n\| Modello \| Data \| Superati \| Troncati \| Token uscita medi \| Token ragionamento medi/);
+  assert.match(corrente, /^\| loc \|/m);
+  assert.match(corrente, /^\| api1 \| 2026-11-24T20-00-00 \|/m);
+  assert.doesNotMatch(corrente, /2026-11-25/);
+  assert.match(altre, /### .*1 esercizi .*\n\n#### Modelli via API\n\n.*\n.*\n\| api1 \| 2026-11-25T08-00-00 \|/);
+  assert.doesNotMatch(altre, /Modelli locali/); // in un'altra impronta le tabelle vuote non compaiono
+});
+
+test("componiRiepilogo: senza esecuzioni né altre impronte", () => {
+  const testo = componiRiepilogo([], confronto());
+  assert.equal(testo.split("Nessuna esecuzione.").length, 3);
+  assert.doesNotMatch(testo, /Altre impronte/);
 });
