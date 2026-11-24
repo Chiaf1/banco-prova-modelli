@@ -179,6 +179,8 @@ export type Riassunto = {
   data: string;
   esercizi: number;
   superati: number;
+  superati_codice: number;
+  superati_non_codice: number;
   media_token_al_secondo: number | null;
   media_primo_token_s: number | null;
   media_totale_s: number | null;
@@ -213,6 +215,8 @@ export function riassumi(
     ...extra,
     esercizi: esercizi.length,
     superati: esercizi.filter((e) => e.superato).length,
+    superati_codice: esercizi.filter((e) => e.superato && categoria(e.formato) === "codice").length,
+    superati_non_codice: esercizi.filter((e) => e.superato && categoria(e.formato) === "non codice").length,
     media_token_al_secondo: media(esercizi.map((e) => e.token_al_secondo)),
     media_primo_token_s: media(esercizi.map((e) => (e.primo_token_ms == null ? null : e.primo_token_ms / 1000))),
     media_totale_s: media(esercizi.map((e) => (e.totale_ms == null ? null : e.totale_ms / 1000))),
@@ -274,6 +278,7 @@ export type Esecuzione = {
   confronto: Confronto;
   chiave: string;
   riassunto: Riassunto;
+  esiti: Record<string, boolean>; // superato per nome di esercizio (solo quelli eseguiti)
   costo_usd: number | null;
 };
 
@@ -298,6 +303,7 @@ export function leggiEsecuzione(
   const r = fine.riassunto ?? {};
   const riassunto = riassumi(
     esercizi.map((e) => ({
+      formato: e.formato,
       superato: e.superato,
       token_al_secondo: e.token_al_secondo,
       primo_token_ms: e.primo_token_ms,
@@ -326,6 +332,7 @@ export function leggiEsecuzione(
     confronto,
     chiave: chiaveConfronto(confronto),
     riassunto,
+    esiti: Object.fromEntries(esercizi.map((e) => [e.esercizio, e.superato === true])),
     costo_usd: costoEsecuzione(righe.filter((x) => x.tipo === "prompt_lungo" || x.tipo === "esercizio").map((x) => x.usage)),
   };
 }
@@ -369,12 +376,19 @@ export function formato(n: number | null | undefined, decimali: number): string 
 }
 
 const INTESTAZIONE_LOCALI =
-  "| Modello | Data | Superati | tok/s medi | Primo token medio (s) | Tempo medio (s) | Token uscita medi | Wh totali | Wh medi | Riposo (W) | Prompt tok/s (token) | Ragiona | Troncati | Note |";
+  "| Modello | Data | Superati | Codice | Non codice | tok/s medi | Primo token medio (s) | Tempo medio (s) | Token uscita medi | Wh totali | Wh medi | Riposo (W) | Prompt tok/s (token) | Ragiona | Troncati | Note |";
 const INTESTAZIONE_API =
-  "| Modello | Data | Superati | Troncati | Token uscita medi | Token ragionamento medi | Tempo medio (s) | Costo totale ($) | Costo per superato ($) | Note |";
+  "| Modello | Data | Superati | Codice | Non codice | Troncati | Token uscita medi | Token ragionamento medi | Tempo medio (s) | Costo totale ($) | Costo per superato ($) | Note |";
 
 const superati = (e: Esecuzione) =>
   `${e.riassunto.superati}/${e.confronto.esercizi.length}${e.riassunto.completo ? "" : " (incompleto)"}`;
+// Esercizi previsti di una categoria; i nomi senza formato nel confronto sono di codice.
+const previsti = (c: Confronto, cat: Categoria) => c.esercizi.filter((n) => categoria(c.formati?.[n]) === cat);
+const perCategoria = (e: Esecuzione, cat: Categoria) => {
+  const n = previsti(e.confronto, cat).length;
+  return n ? `${cat === "codice" ? e.riassunto.superati_codice : e.riassunto.superati_non_codice}/${n}` : "–";
+};
+const categorie = (e: Esecuzione) => [perCategoria(e, "codice"), perCategoria(e, "non codice")];
 const note = (r: Riassunto) =>
   [r.errori_api ? `errori API: ${r.errori_api}` : "", r.note].filter(Boolean).join("; ").replace(/\|/g, "/").replace(/\s*\n\s*/g, " ");
 const riga = (celle: string[]) => `| ${celle.join(" | ")} |`;
@@ -385,6 +399,7 @@ export function rigaLocale(e: Esecuzione): string {
     e.modello,
     e.data,
     superati(e),
+    ...categorie(e),
     formato(r.media_token_al_secondo, 1),
     formato(r.media_primo_token_s, 2),
     formato(r.media_totale_s, 1),
@@ -405,6 +420,7 @@ export function rigaApi(e: Esecuzione): string {
     e.modello,
     e.data,
     superati(e),
+    ...categorie(e),
     String(r.troncati),
     formato(r.media_token_uscita, 0),
     formato(r.media_token_ragionamento, 0),
@@ -413,6 +429,23 @@ export function rigaApi(e: Esecuzione): string {
     formato(costoPerSuperato(e.costo_usd, r.superati), 5),
     note(r),
   ]);
+}
+
+// Esito di ogni esercizio previsto, con gli esercizi raggruppati per categoria:
+// ✓ superato, ✗ fallito, – non eseguito (esecuzione incompleta o fermata).
+export function tabellaEsiti(esecuzioni: Esecuzione[], c: Confronto): string {
+  const gruppi = (["codice", "non codice"] as const).map((cat) => ({ cat, nomi: previsti(c, cat) })).filter((g) => g.nomi.length);
+  const intestazione = ["Modello", ...gruppi.flatMap((g) => [g.cat === "codice" ? "Codice" : "Non codice", ...g.nomi.map((n) => n.slice(0, 2))])];
+  const righe = esecuzioni.map((e) =>
+    riga([
+      e.modello,
+      ...gruppi.flatMap((g) => [perCategoria(e, g.cat), ...g.nomi.map((n) => (n in e.esiti ? (e.esiti[n] ? "✓" : "✗") : "–"))]),
+    ]),
+  );
+  const legenda = gruppi
+    .map((g) => `${g.cat === "codice" ? "Codice" : "Non codice"}: ${g.nomi.map((n) => `${n.slice(0, 2)} ${n.slice(3)}${g.cat === "codice" ? "" : ` (${c.formati?.[n]})`}`).join(", ")}.`)
+    .join(" ");
+  return [`✓ superato, ✗ fallito, – non eseguito. ${legenda}\n`, [riga(intestazione), "|" + "---|".repeat(intestazione.length), ...righe].join("\n") + "\n"].join("\n");
 }
 
 // Le due tabelle; con `ancheVuote` falso una tabella senza righe non compare.
@@ -442,6 +475,7 @@ Le esecuzioni con un'impronta diversa da quella corrente sono in fondo, separate
 - Primo token: primo frammento in streaming, ragionamento compreso.
 - Wh: energia della sola GPU (nvidia-smi ogni 500 ms), integrata sulla durata di ogni chiamata; il riposo non è sottratto.
 - Prompt tok/s: token in ingresso / tempo al primo token su un prompt lungo (max_tokens 1).
+- Superati: totale; Codice e Non codice sono gli stessi superati divisi per categoria (formato codice, oppure json e testo). Le classifiche seguono il totale. Il dettaglio di ogni esercizio è in "Esiti per esercizio".
 - Troncati: risposte con finish_reason "length".
 - Costo: somma di \`usage.cost\` riportato dall'API su tutte le chiamate del run (prompt lungo compreso); "–" se l'API non lo riporta, mai stimato. Costo per superato = costo totale / esercizi superati.
 `;
@@ -452,7 +486,12 @@ export function componiRiepilogo(esecuzioni: Esecuzione[], corrente: Confronto):
   const gruppi = new Map<string, Esecuzione[]>();
   for (const e of esecuzioni) gruppi.set(e.chiave, [...(gruppi.get(e.chiave) ?? []), e]);
   const parti = [INTRO, `## Impronta corrente\n`, `${descriviConfronto(corrente)} (chiave ${chiave})\n`];
-  parti.push(...tabelle(ultimaPerModello(gruppi.get(chiave) ?? []), "###", true));
+  const correnti = ultimaPerModello(gruppi.get(chiave) ?? []);
+  parti.push(...tabelle(correnti, "###", true));
+  if (correnti.length) {
+    const ordinate = [...classificaLocali(correnti.filter((e) => e.locale)), ...classificaApi(correnti.filter((e) => !e.locale))];
+    parti.push(`### Esiti per esercizio\n`, tabellaEsiti(ordinate, corrente));
+  }
   const piuRecente = (es: Esecuzione[]) => es.map((e) => e.data).sort().at(-1)!;
   const altre = [...gruppi.entries()]
     .filter(([k]) => k !== chiave)

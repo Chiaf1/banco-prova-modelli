@@ -24,6 +24,7 @@ import {
   riassumi,
   rigaApi,
   rigaLocale,
+  tabellaEsiti,
   tokenAlSecondo,
   ultimaPerModello,
   tokenPromptAlSecondo,
@@ -264,6 +265,18 @@ test("riassumi: medie, somme e conteggi", () => {
   assert.equal(r.troncati, 1);
   assert.equal(r.errori_api, 1);
   assert.equal(r.ragiona, "in parte");
+  assert.equal(r.superati_codice, 1);
+  assert.equal(r.superati_non_codice, 0);
+});
+
+test("riassumi: superati per categoria, senza formato è codice", () => {
+  const r = riassumi(
+    [riga({ formato: "codice" }), riga({}), riga({ formato: "json" }), riga({ formato: "testo", superato: false }), riga({ formato: "testo" })],
+    extra,
+  );
+  assert.equal(r.superati, 4);
+  assert.equal(r.superati_codice, 2);
+  assert.equal(r.superati_non_codice, 2);
 });
 
 test("riassumi: token di ragionamento medi ignorano i null", () => {
@@ -384,11 +397,11 @@ test("classificaLocali: superati, poi tempo medio", () => {
 
 test("rigaLocale e rigaApi: celle e formati", () => {
   const l = esec({ tipo: "llamacpp", superati: [true, true] });
-  assert.equal(rigaLocale(l), "| m | 2026-11-24T20-00-00 | 2/2 | 10,0 | 1,00 | 5,0 | 40 | 0,020 | 0,0100 | – | 4000 (4800) | sì | 0 | nota |");
+  assert.equal(rigaLocale(l), "| m | 2026-11-24T20-00-00 | 2/2 | 2/2 | – | 10,0 | 1,00 | 5,0 | 40 | 0,020 | 0,0100 | – | 4000 (4800) | sì | 0 | nota |");
   const a = esec({ costi: [0.0005794, 0.00007405, 0.00006508] });
-  assert.equal(rigaApi(a), "| m | 2026-11-24T20-00-00 | 1/2 | 0 | 40 | 15 | 5,0 | 0,0007 | 0,00072 | nota |");
+  assert.equal(rigaApi(a), "| m | 2026-11-24T20-00-00 | 1/2 | 1/2 | – | 0 | 40 | 15 | 5,0 | 0,0007 | 0,00072 | nota |");
   const inc = jsonl().map((r) => (r.tipo === "fine" ? { ...r, riassunto: { ...r.riassunto, completo: false } } : r));
-  assert.match(rigaApi(leggiEsecuzione(inc, predefinito)!), /\| 1\/2 \(incompleto\) \|/);
+  assert.match(rigaApi(leggiEsecuzione(inc, predefinito)!), /\| 1\/2 \(incompleto\) \| 1\/2 \| – \|/);
 });
 
 test("componiRiepilogo: due tabelle per l'impronta corrente, le altre separate e non sovrascritte", () => {
@@ -402,8 +415,8 @@ test("componiRiepilogo: due tabelle per l'impronta corrente, le altre separate e
     confronto(),
   );
   const [corrente, altre] = testo.split("## Altre impronte");
-  assert.match(corrente, /### Modelli locali\n\n\| Modello \| Data \| Superati \| tok\/s medi/);
-  assert.match(corrente, /### Modelli via API\n\n\| Modello \| Data \| Superati \| Troncati \| Token uscita medi \| Token ragionamento medi/);
+  assert.match(corrente, /### Modelli locali\n\n\| Modello \| Data \| Superati \| Codice \| Non codice \| tok\/s medi/);
+  assert.match(corrente, /### Modelli via API\n\n\| Modello \| Data \| Superati \| Codice \| Non codice \| Troncati \| Token uscita medi \| Token ragionamento medi/);
   assert.match(corrente, /^\| loc \|/m);
   assert.match(corrente, /^\| api1 \| 2026-11-24T20-00-00 \|/m);
   assert.doesNotMatch(corrente, /2026-11-25/);
@@ -427,4 +440,61 @@ test("promptEsercizio: codice con la firma, json e testo con il blocco da usare"
   assert.match(j, /un solo blocco ```json\./);
   assert.doesNotMatch(j, /TypeScript|firma/);
   assert.match(promptEsercizio("Consegna C", "testo", null), /un solo blocco ```text\./);
+});
+
+// ---- categorie ed esiti per esercizio ----
+
+const misto = confronto({
+  esercizi: ["01-a", "02-b", "15-c", "17-d"],
+  formati: { "01-a": "codice", "02-b": "codice", "15-c": "json", "17-d": "testo" },
+});
+// Esecuzione su `misto` con gli esiti dati (nome → superato); gli esercizi assenti non sono eseguiti.
+const esecMista = (modello: string, esiti: Record<string, boolean>, tipo = "api") => {
+  const comune = { modello, data: "2026-11-24T20-00-00", avvio: { tipo }, confronto: misto };
+  return leggiEsecuzione(
+    [
+      ...Object.entries(esiti).map(([n, sup]) => ({ tipo: "esercizio", esercizio: n, ...riga({ superato: sup, formato: misto.formati![n] }), ...comune })),
+      { tipo: "fine", riassunto: { completo: Object.keys(esiti).length === 4 }, ...comune },
+    ],
+    predefinito,
+  )!;
+};
+
+test("rigaApi: superati per categoria sugli esercizi previsti", () => {
+  const e = esecMista("m", { "01-a": true, "02-b": false, "15-c": true, "17-d": true });
+  assert.match(rigaApi(e), /^\| m \| 2026-11-24T20-00-00 \| 3\/4 \| 1\/2 \| 2\/2 \|/);
+  const inc = esecMista("m", { "01-a": true, "02-b": true, "15-c": false });
+  assert.match(rigaApi(inc), /\| 2\/4 \(incompleto\) \| 2\/2 \| 0\/2 \|/);
+});
+
+test("leggiEsecuzione: righe vecchie senza formato contano come codice", () => {
+  const e = esec({ superati: [true, true] });
+  assert.equal(e.riassunto.superati_codice, 2);
+  assert.equal(e.riassunto.superati_non_codice, 0);
+  assert.deepEqual(e.esiti, { "01-a": true, "02-b": true });
+});
+
+test("tabellaEsiti: esercizi raggruppati per categoria, ✓ ✗ e – per i non eseguiti", () => {
+  const t = tabellaEsiti(
+    [esecMista("bravo", { "01-a": true, "02-b": true, "15-c": true, "17-d": false }), esecMista("fermato", { "01-a": false })],
+    misto,
+  );
+  const righe = t.split("\n");
+  assert.equal(righe[0], "✓ superato, ✗ fallito, – non eseguito. Codice: 01 a, 02 b. Non codice: 15 c (json), 17 d (testo).");
+  assert.equal(righe[2], "| Modello | Codice | 01 | 02 | Non codice | 15 | 17 |");
+  assert.equal(righe[4], "| bravo | 2/2 | ✓ | ✓ | 1/2 | ✓ | ✗ |");
+  assert.equal(righe[5], "| fermato | 0/2 | ✗ | – | 0/2 | – | – |");
+});
+
+test("tabellaEsiti: senza esercizi non di codice non c'è il gruppo", () => {
+  const t = tabellaEsiti([esec({})], confronto());
+  assert.match(t, /\n\| Modello \| Codice \| 01 \| 02 \|\n/);
+  assert.doesNotMatch(t, /Non codice/);
+});
+
+test("componiRiepilogo: esiti per esercizio solo per l'impronta corrente, locali prima delle API", () => {
+  const testo = componiRiepilogo([esecMista("api1", { "01-a": true }), esecMista("loc", { "01-a": true }, "ollama")], misto);
+  const esiti = testo.split("### Esiti per esercizio")[1];
+  assert.ok(esiti.indexOf("| loc |") < esiti.indexOf("| api1 |"));
+  assert.doesNotMatch(componiRiepilogo([], misto), /### Esiti per esercizio/);
 });
