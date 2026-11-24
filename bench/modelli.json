@@ -68,6 +68,15 @@
       "tetto_chiamate": 15,
       "avvio": "Google AI Studio, free tier, endpoint compatibile OpenAI (https://aistudio.google.com/docs/openai); modello Stable su https://aistudio.google.com/docs/models (letto il 2026-11-22)",
       "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete. La tabella reasoning_effort della documentazione non elenca questo modello e dice che sui Gemini 3 il ragionamento non si spegne."
+    },
+    "glm-5.3-flash": {
+      "tipo": "api",
+      "url": "https://openrouter.ai/api/v1",
+      "id": "z-ai/glm-5.3-flash",
+      "chiave_env": "OPENROUTER_API_KEY",
+      "tetto_chiamate": 15,
+      "avvio": "OpenRouter, credito prepagato, endpoint compatibile OpenAI",
+      "note": "Remoto: energia non misurata; primo token e token/s comprendono la rete."
     }
   }
 }

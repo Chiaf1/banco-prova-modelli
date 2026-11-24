@@ -17,7 +17,7 @@ Banda teorica della RAM in dual channel: 4800 MT/s × 8 byte × 2 canali = 76,8 
 | Programma | Versione |
 |---|---|
 | Sistema | Fedora 45, kernel 7.3.4-300.fc45.x86_64 |
-| Driver NVIDIA | 620.70.06 (CUDA 13.5) |
+| Driver NVIDIA | 620.73.04 (CUDA 13.5), aggiornato il 24 novembre 2026; le misure locali fino al 23 novembre sono con 620.70.06 |
 | llama.cpp | 1.0.0-dev, build 12607, commit 1fdda89a4 (Clang 19.1.7) |
 | Ollama | 0.40.16 |
 
