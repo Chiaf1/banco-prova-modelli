@@ -2,7 +2,7 @@
 
 ## Scopo della repo
 
-Banco minimo che fa risolvere 10 esercizi di coding a ogni modello e misura velocità, token, energia della GPU e accuratezza. Deve restare piccolo: niente dipendenze, ogni numero del riepilogo esce dal codice.
+Banco minimo che fa risolvere 9 esercizi di coding a ogni modello e misura velocità, token, energia della GPU e accuratezza. Deve restare piccolo: niente dipendenze, ogni numero del riepilogo esce dal codice.
 
 ## Comandi
 
