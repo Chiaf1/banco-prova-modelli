@@ -191,6 +191,9 @@ async function eseguiModello(nome: string): Promise<void> {
     chiamateFatte++;
     const e = await chiamata({ url: conf.url, chiave, modello: conf.id, messaggi: [{ role: "user", content: messaggio }], parametri });
     if (e.stato_http === 429) throw new Fermata(`HTTP 429 (limite di richieste): ${e.errore}`);
+    // Senza nuovi tentativi un esercizio con 503 è perso: fermarsi non spreca altre chiamate
+    // e lascia l'esecuzione incompleta, quindi --tutti la rifà.
+    if (e.stato_http === 503) throw new Fermata(`HTTP 503 (servizio sovraccarico, riprova più tardi): ${e.errore}`);
     return e;
   };
 

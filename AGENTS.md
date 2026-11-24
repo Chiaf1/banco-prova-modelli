@@ -29,7 +29,7 @@ node --test --test-name-pattern="whIntegrati" test/bench.test.ts
 
 - Se cambi un testo in `bench/prompt.ts` alza `VERSIONE_PROMPT`. Se cambi un esercizio lancia `npm run bench:verifica`.
 - La chiave Gemini sta in `.env` (`GEMINI_API_KEY`): non stamparla e non metterla nella repo.
-- Google free tier: niente nuovi tentativi dopo un 429, pausa tra le chiamate e tetto di chiamate in `modelli.json`.
+- Google free tier: niente nuovi tentativi dopo un 429 o un 503 (il banco si ferma), pausa tra le chiamate e tetto di chiamate in `modelli.json`.
 - Se cambia l'hardware o una versione (driver, Ollama, llama.cpp) aggiorna `note/hardware.md`: le misure vecchie e nuove non sono più confrontabili alla pari.
 
 ## Vincoli del type stripping di Node
