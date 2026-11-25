@@ -27,6 +27,13 @@ export function media(valori: (number | null | undefined)[]): number | null {
   return buoni.length ? buoni.reduce((a, b) => a + b, 0) / buoni.length : null;
 }
 
+// Media, minimo e massimo ignorando null, undefined e NaN; null se non resta niente.
+export function statistiche(valori: (number | null | undefined)[]): { media: number; min: number; max: number; n: number } | null {
+  const buoni = valori.filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
+  if (!buoni.length) return null;
+  return { media: buoni.reduce((a, b) => a + b, 0) / buoni.length, min: Math.min(...buoni), max: Math.max(...buoni), n: buoni.length };
+}
+
 export function somma(valori: (number | null | undefined)[]): number | null {
   const buoni = valori.filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
   return buoni.length ? buoni.reduce((a, b) => a + b, 0) : null;
@@ -271,14 +278,28 @@ export function descriviConfronto(c: Confronto): string {
   return `${parametri}; ${es}; prompt v${c.versione_prompt}`;
 }
 
+// Giri ripetuti dello stesso modello (--ripetizioni N): ogni giro è un'esecuzione con lo stesso id.
+export type Serie = { id: string; giro: number; giri: number };
+
+// Ciò che serve degli esercizi per gli esiti, il provider e le ripetizioni.
+export type DettaglioEsercizio = {
+  superato: boolean;
+  token_uscita: number | null;
+  totale_ms: number | null;
+  finish_reason: string | null;
+  provider: string | null; // assente nelle righe scritte prima del campo
+};
+
 export type Esecuzione = {
   modello: string;
   data: string;
+  serie: Serie | null; // null nei file vecchi e con un solo giro
   locale: boolean;
   confronto: Confronto;
   chiave: string;
   riassunto: Riassunto;
   esiti: Record<string, boolean>; // superato per nome di esercizio (solo quelli eseguiti)
+  dettagli: Record<string, DettaglioEsercizio>; // per nome di esercizio (solo quelli eseguiti)
   costo_usd: number | null;
 };
 
@@ -325,14 +346,30 @@ export function leggiEsecuzione(
       note: r.note ?? "",
     },
   );
+  const s = fine.serie;
+  const serie: Serie | null =
+    s && typeof s.id === "string" && Number.isInteger(s.giro) && Number.isInteger(s.giri) ? { id: s.id, giro: s.giro, giri: s.giri } : null;
   return {
     modello: fine.modello,
     data: fine.data,
+    serie,
     locale: fine.avvio?.tipo !== "api",
     confronto,
     chiave: chiaveConfronto(confronto),
     riassunto,
     esiti: Object.fromEntries(esercizi.map((e) => [e.esercizio, e.superato === true])),
+    dettagli: Object.fromEntries(
+      esercizi.map((e) => [
+        e.esercizio,
+        {
+          superato: e.superato === true,
+          token_uscita: e.token_uscita ?? null,
+          totale_ms: e.totale_ms ?? null,
+          finish_reason: e.finish_reason ?? null,
+          provider: typeof e.provider === "string" ? e.provider : null,
+        },
+      ]),
+    ),
     costo_usd: costoEsecuzione(righe.filter((x) => x.tipo === "prompt_lungo" || x.tipo === "esercizio").map((x) => x.usage)),
   };
 }
@@ -345,6 +382,16 @@ export function ultimaPerModello(esecuzioni: Esecuzione[]): Esecuzione[] {
     if (!prima || e.data > prima.data) ultime.set(e.modello, e);
   }
   return [...ultime.values()];
+}
+
+// Per ogni modello la sua esecuzione più recente con, se fa parte di una serie, gli altri giri
+// della stessa serie (in ordine di data). Un'esecuzione senza serie è un gruppo da sola.
+export function ultimaSeriePerModello(esecuzioni: Esecuzione[]): Esecuzione[][] {
+  return ultimaPerModello(esecuzioni).map((u) =>
+    u.serie
+      ? esecuzioni.filter((e) => e.modello === u.modello && e.serie?.id === u.serie!.id).sort((a, b) => a.data.localeCompare(b.data))
+      : [u],
+  );
 }
 
 // Crescente con i null in fondo.
@@ -389,8 +436,14 @@ const perCategoria = (e: Esecuzione, cat: Categoria) => {
   return n ? `${cat === "codice" ? e.riassunto.superati_codice : e.riassunto.superati_non_codice}/${n}` : "–";
 };
 const categorie = (e: Esecuzione) => [perCategoria(e, "codice"), perCategoria(e, "non codice")];
-const note = (r: Riassunto) =>
-  [r.errori_api ? `errori API: ${r.errori_api}` : "", r.note].filter(Boolean).join("; ").replace(/\|/g, "/").replace(/\s*\n\s*/g, " ");
+const note = (e: Esecuzione) =>
+  [
+    e.serie && e.serie.giri > 1 ? `giro ${e.serie.giro} di ${e.serie.giri}: tutti i giri in "Ripetizioni"` : "",
+    e.riassunto.errori_api ? `errori API: ${e.riassunto.errori_api}` : "",
+    e.riassunto.note,
+  ]
+    .filter(Boolean)
+    .join("; ").replace(/\|/g, "/").replace(/\s*\n\s*/g, " ");
 const riga = (celle: string[]) => `| ${celle.join(" | ")} |`;
 
 export function rigaLocale(e: Esecuzione): string {
@@ -410,7 +463,7 @@ export function rigaLocale(e: Esecuzione): string {
     `${formato(r.prompt_token_al_secondo, 0)} (${formato(r.prompt_token, 0)})`,
     r.ragiona,
     String(r.troncati),
-    note(r),
+    note(e),
   ]);
 }
 
@@ -427,27 +480,98 @@ export function rigaApi(e: Esecuzione): string {
     formato(r.media_totale_s, 1),
     formato(e.costo_usd, 4),
     formato(costoPerSuperato(e.costo_usd, r.superati), 5),
-    note(r),
+    note(e),
   ]);
 }
 
-// Esito di ogni esercizio previsto, con gli esercizi raggruppati per categoria:
-// ✓ superato, ✗ fallito, – non eseguito (esecuzione incompleta o fermata).
-export function tabellaEsiti(esecuzioni: Esecuzione[], c: Confronto): string {
-  const gruppi = (["codice", "non codice"] as const)
+const gruppiCategoria = (c: Confronto) =>
+  (["codice", "non codice"] as const)
     .map((cat) => ({ cat, titolo: cat === "codice" ? "Codice" : "Non codice", nomi: previsti(c, cat) }))
     .filter((g) => g.nomi.length);
+const tabellaMd = (intestazione: string[], righe: string[]) =>
+  [riga(intestazione), "|" + "---|".repeat(intestazione.length), ...righe].join("\n") + "\n";
+const nomeGruppo = (serie: Esecuzione[]) => (serie.length > 1 ? `${serie[0].modello} (${serie.length} giri)` : serie[0].modello);
+
+// Quante volte un esercizio è stato superato nei giri che lo hanno eseguito: "2/3"; "–" se nessuno.
+export function superatiNeiGiri(serie: Esecuzione[], nome: string): string {
+  const giri = serie.filter((e) => nome in e.esiti);
+  return giri.length ? `${giri.filter((e) => e.esiti[nome]).length}/${giri.length}` : "–";
+}
+
+// Esito di ogni esercizio previsto, con gli esercizi raggruppati per categoria. Un gruppo è
+// un'esecuzione sola (✓ superato, ✗ fallito, – non eseguito) o i giri di una serie (k/N: superato
+// k volte sugli N giri che lo hanno eseguito; per categoria superati di tutti i giri / previsti × giri).
+export function tabellaEsiti(serie: Esecuzione[][], c: Confronto): string {
+  const gruppi = gruppiCategoria(c);
   const intestazione = ["Modello", ...gruppi.flatMap((g) => [g.titolo, ...g.nomi.map((n) => n.slice(0, 2))])];
-  const righe = esecuzioni.map((e) =>
+  const righe = serie.map((s) =>
     riga([
-      e.modello,
-      ...gruppi.flatMap((g) => [perCategoria(e, g.cat), ...g.nomi.map((n) => (n in e.esiti ? (e.esiti[n] ? "✓" : "✗") : "–"))]),
+      nomeGruppo(s),
+      ...gruppi.flatMap((g) =>
+        s.length === 1
+          ? [perCategoria(s[0], g.cat), ...g.nomi.map((n) => (n in s[0].esiti ? (s[0].esiti[n] ? "✓" : "✗") : "–"))]
+          : [
+              `${s.reduce((t, e) => t + (g.cat === "codice" ? e.riassunto.superati_codice : e.riassunto.superati_non_codice), 0)}/${g.nomi.length * s.length}`,
+              ...g.nomi.map((n) => superatiNeiGiri(s, n)),
+            ],
+      ),
     ]),
   );
   const legenda = gruppi
     .map((g) => `${g.titolo}: ${g.nomi.map((n) => `${n.slice(0, 2)} ${n.slice(3)}${g.cat === "codice" ? "" : ` (${c.formati?.[n]})`}`).join(", ")}.`)
     .join(" ");
-  return [`✓ superato, ✗ fallito, – non eseguito. ${legenda}\n`, [riga(intestazione), "|" + "---|".repeat(intestazione.length), ...righe].join("\n") + "\n"].join("\n");
+  const ripetuti = serie.some((s) => s.length > 1) ? " Con più giri, k/N: superato k volte su N." : "";
+  return [`✓ superato, ✗ fallito, – non eseguito.${ripetuti} ${legenda}\n`, tabellaMd(intestazione, righe)].join("\n");
+}
+
+// Provider di un esercizio nei giri di una serie: "Novita" con un giro, "Novita ×2, Chutes ×1" con più giri
+// (più frequente prima); "–" se nessun giro lo riporta.
+export function providerNeiGiri(serie: Esecuzione[], nome: string): string {
+  const conteggi = new Map<string, number>();
+  for (const e of serie) {
+    const p = e.dettagli[nome]?.provider;
+    if (p) conteggi.set(p, (conteggi.get(p) ?? 0) + 1);
+  }
+  if (!conteggi.size) return "–";
+  const ordinati = [...conteggi.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  return ordinati.map(([p, k]) => (serie.length > 1 ? `${p} ×${k}` : p)).join(", ");
+}
+
+// Provider per esercizio, solo per i gruppi in cui almeno una chiamata lo riporta; "" se nessuno.
+export function tabellaProvider(serie: Esecuzione[][], c: Confronto): string {
+  const conProvider = serie.filter((s) => s.some((e) => Object.values(e.dettagli).some((d) => d.provider)));
+  if (!conProvider.length) return "";
+  const nomi = gruppiCategoria(c).flatMap((g) => g.nomi);
+  const righe = conProvider.map((s) => riga([nomeGruppo(s), ...nomi.map((n) => providerNeiGiri(s, n))]));
+  return tabellaMd(["Modello", ...nomi.map((n) => n.slice(0, 2))], righe);
+}
+
+// "media (min–max)" con la virgola decimale; "–" se non c'è nessun valore.
+export function formatoIntervallo(valori: (number | null | undefined)[], decimali: number): string {
+  const st = statistiche(valori);
+  return st ? `${formato(st.media, decimali)} (${formato(st.min, decimali)}–${formato(st.max, decimali)})` : "–";
+}
+
+// I giri di una serie esercizio per esercizio: superati k/N, troncati, token in uscita e tempo
+// come media (minimo–massimo) sui giri che hanno eseguito l'esercizio.
+export function tabellaRipetizioni(serie: Esecuzione[], c: Confronto, titolo = "####"): string {
+  const nomi = gruppiCategoria(c).flatMap((g) => g.nomi);
+  const righe = nomi.map((n) => {
+    const d = serie.map((e) => e.dettagli[n]).filter((x): x is DettaglioEsercizio => x != null);
+    return riga([
+      n,
+      superatiNeiGiri(serie, n),
+      d.length ? String(d.filter((x) => x.finish_reason === "length").length) : "–",
+      formatoIntervallo(d.map((x) => x.token_uscita), 0),
+      formatoIntervallo(d.map((x) => (x.totale_ms == null ? null : x.totale_ms / 1000)), 1),
+    ]);
+  });
+  const perGiro = serie.map((e) => `${e.riassunto.superati}/${c.esercizi.length}${e.riassunto.completo ? "" : " (incompleto)"}`).join(", ");
+  return [
+    `${titolo} ${serie[0].modello}: ${serie.length} giri (${serie[0].data} … ${serie[serie.length - 1].data})\n`,
+    `Superati per giro: ${perGiro}.\n`,
+    tabellaMd(["Esercizio", "Superati", "Troncati", "Token uscita: media (min–max)", "Tempo (s): media (min–max)"], righe),
+  ].join("\n");
 }
 
 // Le due tabelle; con `ancheVuote` falso una tabella senza righe non compare.
@@ -480,7 +604,26 @@ Le esecuzioni con un'impronta diversa da quella corrente sono in fondo, separate
 - Superati: totale; Codice e Non codice sono gli stessi superati divisi per categoria (formato codice, oppure json e testo). Le classifiche seguono il totale. Il dettaglio di ogni esercizio è in "Esiti per esercizio".
 - Troncati: risposte con finish_reason "length".
 - Costo: somma di \`usage.cost\` riportato dall'API su tutte le chiamate del run (prompt lungo compreso); "–" se l'API non lo riporta, mai stimato. Costo per superato = costo totale / esercizi superati.
+- Ripetizioni (\`--ripetizioni N\`): le classifiche mostrano l'ultimo giro; "Esiti per esercizio" conta i superati su tutti i giri (k/N) e "Ripetizioni" dà, per esercizio, token in uscita e tempo come media (minimo–massimo).
+- Provider: il campo \`provider\` che OpenRouter mette nella risposta in streaming, per esercizio; i modelli senza provider non compaiono.
 `;
+
+// I gruppi nell'ordine delle classifiche (locali, poi API), ognuno rappresentato dal suo ultimo giro.
+function ordinaSerie(serie: Esecuzione[][]): Esecuzione[][] {
+  const ultimi = serie.map((s) => s[s.length - 1]);
+  const ordinate = [...classificaLocali(ultimi.filter((e) => e.locale)), ...classificaApi(ultimi.filter((e) => !e.locale))];
+  return ordinate.map((u) => serie[ultimi.indexOf(u)]);
+}
+
+// Provider per esercizio e Ripetizioni, solo se c'è qualcosa da mostrare.
+function providerERipetizioni(serie: Esecuzione[][], c: Confronto, titoloProvider: string, titoloRipetizioni: string): string[] {
+  const parti: string[] = [];
+  const provider = tabellaProvider(serie, c);
+  if (provider) parti.push(`${titoloProvider} Provider per esercizio\n`, provider);
+  const ripetute = serie.filter((s) => s.length > 1);
+  if (ripetute.length) parti.push(`${titoloRipetizioni} Ripetizioni\n`, ...ripetute.map((s) => tabellaRipetizioni(s, c, `${titoloRipetizioni}#`)));
+  return parti;
+}
 
 // Il riepilogo intero: prima l'impronta corrente (locali e API), poi le altre dalla più recente.
 export function componiRiepilogo(esecuzioni: Esecuzione[], corrente: Confronto): string {
@@ -488,22 +631,25 @@ export function componiRiepilogo(esecuzioni: Esecuzione[], corrente: Confronto):
   const gruppi = new Map<string, Esecuzione[]>();
   for (const e of esecuzioni) gruppi.set(e.chiave, [...(gruppi.get(e.chiave) ?? []), e]);
   const parti = [INTRO, `## Impronta corrente\n`, `${descriviConfronto(corrente)} (chiave ${chiave})\n`];
-  const correnti = ultimaPerModello(gruppi.get(chiave) ?? []);
+  const serie = ultimaSeriePerModello(gruppi.get(chiave) ?? []);
+  const correnti = serie.map((s) => s[s.length - 1]);
   parti.push(...tabelle(correnti, "###", true));
   if (correnti.length) {
-    const ordinate = [...classificaLocali(correnti.filter((e) => e.locale)), ...classificaApi(correnti.filter((e) => !e.locale))];
-    parti.push(`### Esiti per esercizio\n`, tabellaEsiti(ordinate, corrente));
+    parti.push(`### Esiti per esercizio\n`, tabellaEsiti(ordinaSerie(serie), corrente));
+    parti.push(...providerERipetizioni(ordinaSerie(serie), corrente, "####", "###"));
   }
-  const piuRecente = (es: Esecuzione[]) => es.map((e) => e.data).sort().at(-1)!;
+  const piuRecente = (es: Esecuzione[][]) => es.flat().map((e) => e.data).sort().at(-1)!;
   const altre = [...gruppi.entries()]
     .filter(([k]) => k !== chiave)
-    .map(([, es]) => ultimaPerModello(es))
+    .map(([, es]) => ultimaSeriePerModello(es))
     .sort((a, b) => piuRecente(b).localeCompare(piuRecente(a)));
   if (altre.length) {
     parti.push(`## Altre impronte\n`, "Esecuzioni non confrontabili con quelle sopra.\n");
-    for (const es of altre) {
+    for (const ss of altre) {
+      const es = ss.map((s) => s[s.length - 1]);
       parti.push(`### ${descriviConfronto(es[0].confronto)} (chiave ${es[0].chiave})\n`);
       parti.push(...tabelle(es, "####", false));
+      parti.push(...providerERipetizioni(ordinaSerie(ss), es[0].confronto, "####", "####"));
     }
   }
   return parti.join("\n");

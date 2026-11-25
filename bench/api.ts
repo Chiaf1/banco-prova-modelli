@@ -33,6 +33,7 @@ export type EsitoChiamata = {
   timings: unknown; // tempi propri del server (llama.cpp / Ollama), se presenti
   stato_http: number | null;
   errore: string | null;
+  provider: string | null; // chi ha servito la chiamata, se l'API lo dice (campo `provider` di OpenRouter)
 };
 
 export async function chiamata(opz: {
@@ -66,6 +67,7 @@ export async function chiamata(opz: {
     timings: null,
     stato_http: null,
     errore: null,
+    provider: null,
   };
   const t0 = performance.now();
   try {
@@ -92,6 +94,7 @@ export async function chiamata(opz: {
         } catch {
           return;
         }
+        if (typeof j.provider === "string" && j.provider) esito.provider = j.provider;
         if (j.error) esito.errore = `errore nello stream: ${JSON.stringify(j.error).slice(0, 500)}`;
         const scelta = j.choices?.[0];
         if (scelta && esito.primo_frammento_ms == null) esito.primo_frammento_ms = performance.now() - t0;

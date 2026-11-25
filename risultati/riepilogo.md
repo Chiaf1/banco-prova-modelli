@@ -13,6 +13,8 @@ Le esecuzioni con un'impronta diversa da quella corrente sono in fondo, separate
 - Superati: totale; Codice e Non codice sono gli stessi superati divisi per categoria (formato codice, oppure json e testo). Le classifiche seguono il totale. Il dettaglio di ogni esercizio è in "Esiti per esercizio".
 - Troncati: risposte con finish_reason "length".
 - Costo: somma di `usage.cost` riportato dall'API su tutte le chiamate del run (prompt lungo compreso); "–" se l'API non lo riporta, mai stimato. Costo per superato = costo totale / esercizi superati.
+- Ripetizioni (`--ripetizioni N`): le classifiche mostrano l'ultimo giro; "Esiti per esercizio" conta i superati su tutti i giri (k/N) e "Ripetizioni" dà, per esercizio, token in uscita e tempo come media (minimo–massimo).
+- Provider: il campo `provider` che OpenRouter mette nella risposta in streaming, per esercizio; i modelli senza provider non compaiono.
 
 ## Impronta corrente
 
@@ -41,6 +43,31 @@ Nessuna esecuzione.
 ## Altre impronte
 
 Esecuzioni non confrontabili con quelle sopra.
+
+### temperature 0, max_tokens 32768, reasoning_effort medium; 2 esercizi (04-conta-parole … 07-numeri-romani); prompt v2 (chiave 9438a20e921b9e52)
+
+#### Modelli via API
+
+| Modello | Data | Superati | Codice | Non codice | Troncati | Token uscita medi | Token ragionamento medi | Tempo medio (s) | Costo totale ($) | Costo per superato ($) | Note |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| glm-5.3-flash | 2026-11-25T22-13-40 | 2/2 | 2/2 | – | 0 | 292 | 5 | 2,0 | 0,0004 | 0,00019 | giro 2 di 2: tutti i giri in "Ripetizioni"; Remoto: energia non misurata; primo token e token/s comprendono la rete. |
+
+#### Provider per esercizio
+
+| Modello | 04 | 07 |
+|---|---|---|
+| glm-5.3-flash (2 giri) | OpenInference ×1, Relace ×1 | Venice ×1, Wafer ×1 |
+
+#### Ripetizioni
+
+##### glm-5.3-flash: 2 giri (2026-11-25T22-13-33 … 2026-11-25T22-13-40)
+
+Superati per giro: 2/2, 2/2.
+
+| Esercizio | Superati | Troncati | Token uscita: media (min–max) | Tempo (s): media (min–max) |
+|---|---|---|---|---|
+| 04-conta-parole | 2/2 | 0 | 97 (97–97) | 1,6 (1,5–1,6) |
+| 07-numeri-romani | 2/2 | 0 | 627 (486–767) | 3,2 (2,5–3,9) |
 
 ### temperature 0, max_tokens 8192, reasoning_effort medium; 13 esercizi (04-conta-parole … 18-oee-turno); prompt v2 (chiave 3c2aead41058eef7)
 

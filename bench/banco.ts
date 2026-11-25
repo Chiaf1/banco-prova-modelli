@@ -1,6 +1,7 @@
 // Banco: fa risolvere gli esercizi a un modello e misura velocità, token, energia della GPU e accuratezza.
-// Uso: npm run bench -- --model <nome> [--esercizi N] [--pausa S] [--forza]
-//      npm run bench -- --tutti [--esercizi N] [--forza]
+// Uso: npm run bench -- --model <nome> [--esercizi N] [--ripetizioni N] [--pausa S] [--forza]
+//      npm run bench -- --tutti [--esercizi N] [--ripetizioni N] [--forza]
+// Con --ripetizioni N ogni modello fa N giri, ognuno con il suo .jsonl e la stessa `serie`.
 import { randomBytes } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -23,6 +24,7 @@ import {
   tokenPromptAlSecondo,
   whIntegrati,
   type RigaEsercizio,
+  type Serie,
 } from "./calcoli.ts";
 import { avviaMisuratore, CAMPO_POTENZA, INTERVALLO_MS, type Misuratore } from "./energia.ts";
 import { elencaEsercizi, eseguiTest, improntaEsercizi } from "./esegui.ts";
@@ -68,6 +70,7 @@ const { values: arg } = parseArgs({
     tutti: { type: "boolean", default: false },
     esercizi: { type: "string" },
     pausa: { type: "string" },
+    ripetizioni: { type: "string" },
     forza: { type: "boolean", default: false },
   },
 });
@@ -82,7 +85,7 @@ function esci(messaggio: string): never {
 }
 
 const nomi = arg.tutti ? Object.keys(config.modelli) : arg.model ? [arg.model] : [];
-if (nomi.length === 0) esci("Uso: npm run bench -- --model <nome> [--esercizi N] [--pausa S] [--forza] | --tutti");
+if (nomi.length === 0) esci("Uso: npm run bench -- --model <nome> [--esercizi N] [--ripetizioni N] [--pausa S] [--forza] | --tutti");
 for (const n of nomi) {
   if (!config.modelli[n]) esci(`Modello "${n}" non è in bench/modelli.json. Disponibili: ${Object.keys(config.modelli).join(", ")}`);
 }
@@ -93,6 +96,8 @@ if (!Number.isInteger(quanti) || quanti < 1 || quanti > tuttiEsercizi.length) {
 }
 const esercizi = tuttiEsercizi.slice(0, quanti);
 if (arg.pausa != null && !(Number(arg.pausa) >= 0)) esci("--pausa deve essere un numero di secondi ≥ 0");
+const ripetizioni = arg.ripetizioni ? Number(arg.ripetizioni) : 1;
+if (!Number.isInteger(ripetizioni) || ripetizioni < 1) esci("--ripetizioni deve essere un intero ≥ 1");
 
 // Esecuzione completa già presente con la stessa impronta?
 function giaEseguito(modello: string, imp: string): string | null {
@@ -111,7 +116,8 @@ const attendi = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const s = (ms: number | null) => (ms == null ? "–" : (ms / 1000).toFixed(2));
 const n1 = (x: number | null) => (x == null ? "–" : x.toFixed(1));
 
-async function eseguiModello(nome: string): Promise<void> {
+// Un giro di un modello. `serie` è null con un solo giro. Restituisce true se il giro è stato interrotto.
+async function eseguiModello(nome: string, serie: Serie | null): Promise<boolean> {
   const conf = config.modelli[nome];
   const locale = conf.tipo !== "api";
   const ambiente = conf.tipo === "ollama" ? ambienteOllama() : null;
@@ -124,10 +130,11 @@ async function eseguiModello(nome: string): Promise<void> {
     prompt_lungo: config.prompt_lungo,
     esercizi: improntaEsercizi(esercizi),
   });
-  const gia = giaEseguito(nome, imp);
+  // Con più giri si chiede esplicitamente di rifare: niente salto.
+  const gia = serie ? null : giaEseguito(nome, imp);
   if (gia && !arg.forza) {
     console.log(`= ${nome}: già eseguito con le stesse impostazioni (risultati/${gia}), salto. Usa --forza per rifarlo.`);
-    return;
+    return false;
   }
 
   // ---- preparazione: un modello alla volta ----
@@ -150,7 +157,12 @@ async function eseguiModello(nome: string): Promise<void> {
     }
   }
 
-  const data = dataEsecuzione(new Date());
+  // Due giri nello stesso secondo darebbero lo stesso file: si aspetta il secondo dopo.
+  let data = dataEsecuzione(new Date());
+  while (existsSync(join(RISULTATI, `${data}-${nomeFile(nome)}.jsonl`))) {
+    await attendi(1000);
+    data = dataEsecuzione(new Date());
+  }
   const fileJsonl = join(RISULTATI, `${data}-${nomeFile(nome)}.jsonl`);
   const cartellaRisposte = join(RISULTATI, "codice", `${data}-${nomeFile(nome)}`);
   mkdirSync(cartellaRisposte, { recursive: true });
@@ -164,6 +176,7 @@ async function eseguiModello(nome: string): Promise<void> {
   const comune: Record<string, unknown> = {
     modello: nome,
     data,
+    ...(serie ? { serie } : {}),
     impronta: imp,
     versione_programma: versioneProgramma(),
     hardware,
@@ -183,7 +196,8 @@ async function eseguiModello(nome: string): Promise<void> {
   };
   const scrivi = (riga: Record<string, unknown>) => appendFileSync(fileJsonl, JSON.stringify({ ...riga, ...comune }) + "\n");
 
-  console.log(`> ${nome} (${conf.tipo}), ${esercizi.length} esercizi → ${fileJsonl.replace(RADICE + "/", "")}`);
+  const giro = serie ? `, giro ${serie.giro}/${serie.giri}` : "";
+  console.log(`> ${nome} (${conf.tipo}${giro}), ${esercizi.length} esercizi → ${fileJsonl.replace(RADICE + "/", "")}`);
   const misuratore: Misuratore | null = locale ? avviaMisuratore() : null;
   const energia = async (e: EsitoChiamata) => {
     if (!misuratore) return null;
@@ -198,7 +212,8 @@ async function eseguiModello(nome: string): Promise<void> {
   let prompt: { tps: number | null; token: number | null } = { tps: null, token: null };
   const chiama = async (messaggio: string, parametri: ParametriChiamata) => {
     if (chiamateFatte >= tetto) throw new Fermata(`tetto di ${tetto} chiamate raggiunto`);
-    if (chiamateFatte > 0 && pausaMs > 0) await attendi(pausaMs);
+    // Dal secondo giro la pausa vale anche prima della prima chiamata (giri consecutivi sullo stesso endpoint).
+    if ((chiamateFatte > 0 || (serie?.giro ?? 1) > 1) && pausaMs > 0) await attendi(pausaMs);
     chiamateFatte++;
     const e = await chiamata({ url: conf.url, chiave, modello: conf.id, messaggi: [{ role: "user", content: messaggio }], parametri });
     if (e.stato_http === 429) throw new Fermata(`HTTP 429 (limite di richieste): ${e.errore}`);
@@ -279,6 +294,7 @@ async function eseguiModello(nome: string): Promise<void> {
         prompt_token_al_secondo: prompt.tps,
         wh,
         finish_reason: e.finish_reason,
+        provider: e.provider,
         usage: e.usage,
         timings: e.timings,
         errore: e.errore,
@@ -290,6 +306,8 @@ async function eseguiModello(nome: string): Promise<void> {
       const e = await chiama(promptEsercizio(es.consegna, es.formato, es.firma), config.parametri_chiamata);
       const wh = await energia(e);
       writeFileSync(join(cartellaRisposte, `${es.numero}.risposta.md`), e.testo);
+      // Il ragionamento si salva sempre quando c'è: con una risposta troncata è l'unica traccia.
+      if (e.ragionamento) writeFileSync(join(cartellaRisposte, `${es.numero}.ragionamento.md`), e.ragionamento);
       const risposta = estraiRisposta(e.testo, es.formato);
       let test = null;
       if (risposta != null) {
@@ -317,6 +335,7 @@ async function eseguiModello(nome: string): Promise<void> {
         ...riga,
         token_ingresso: e.token_ingresso,
         caratteri_ragionamento: e.ragionamento.length,
+        provider: e.provider,
         risposta_estratta: risposta != null,
         test,
         usage: e.usage,
@@ -328,7 +347,7 @@ async function eseguiModello(nome: string): Promise<void> {
       console.log(
         `  ${es.nome}: ${esito} | ${s(e.totale_ms)} s, primo token ${s(e.primo_token_ms)} s, ` +
           `${e.token_ingresso ?? "–"}→${e.token_uscita ?? "–"} token, ${n1(riga.token_al_secondo)} tok/s, ` +
-          `${wh == null ? "–" : wh.toFixed(4)} Wh${e.finish_reason === "length" ? " | TRONCATO (length)" : ""}${e.errore ? ` | ${e.errore}` : ""}`,
+          `${wh == null ? "–" : wh.toFixed(4)} Wh${e.provider ? ` | ${e.provider}` : ""}${e.finish_reason === "length" ? " | TRONCATO (length)" : ""}${e.errore ? ` | ${e.errore}` : ""}`,
       );
     }
   } catch (err) {
@@ -363,12 +382,20 @@ async function eseguiModello(nome: string): Promise<void> {
   const questa = tutte.find((x) => x.modello === nome && x.data === data);
   if (questa) console.log(`  ${questa.locale ? rigaLocale(questa) : rigaApi(questa)}`);
   console.log(`  riepilogo aggiornato: risultati/riepilogo.md`);
+  return interruzione != null;
 }
 
 let fallimenti = 0;
 for (const nome of nomi) {
   try {
-    await eseguiModello(nome);
+    const id = randomBytes(4).toString("hex");
+    for (let g = 1; g <= ripetizioni; g++) {
+      // Un giro interrotto (429, 503, tetto) ferma anche i giri successivi dello stesso modello.
+      if (await eseguiModello(nome, ripetizioni > 1 ? { id, giro: g, giri: ripetizioni } : null)) {
+        if (g < ripetizioni) console.error(`  ! ${nome}: giri ${g + 1}–${ripetizioni} non eseguiti`);
+        break;
+      }
+    }
   } catch (err) {
     if (!(err instanceof Fermata)) throw err;
     fallimenti++;

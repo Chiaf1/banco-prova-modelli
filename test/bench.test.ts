@@ -25,6 +25,13 @@ import {
   rigaApi,
   rigaLocale,
   tabellaEsiti,
+  tabellaProvider,
+  tabellaRipetizioni,
+  providerNeiGiri,
+  statistiche,
+  formatoIntervallo,
+  superatiNeiGiri,
+  ultimaSeriePerModello,
   tokenAlSecondo,
   ultimaPerModello,
   tokenPromptAlSecondo,
@@ -476,7 +483,7 @@ test("leggiEsecuzione: righe vecchie senza formato contano come codice", () => {
 
 test("tabellaEsiti: esercizi raggruppati per categoria, ✓ ✗ e – per i non eseguiti", () => {
   const t = tabellaEsiti(
-    [esecMista("bravo", { "01-a": true, "02-b": true, "15-c": true, "17-d": false }), esecMista("fermato", { "01-a": false })],
+    [[esecMista("bravo", { "01-a": true, "02-b": true, "15-c": true, "17-d": false })], [esecMista("fermato", { "01-a": false })]],
     misto,
   );
   const righe = t.split("\n");
@@ -487,7 +494,7 @@ test("tabellaEsiti: esercizi raggruppati per categoria, ✓ ✗ e – per i non 
 });
 
 test("tabellaEsiti: senza esercizi non di codice non c'è il gruppo", () => {
-  const t = tabellaEsiti([esec({})], confronto());
+  const t = tabellaEsiti([[esec({})]], confronto());
   assert.match(t, /\n\| Modello \| Codice \| 01 \| 02 \|\n/);
   assert.doesNotMatch(t, /Non codice/);
 });
@@ -497,4 +504,121 @@ test("componiRiepilogo: esiti per esercizio solo per l'impronta corrente, locali
   const esiti = testo.split("### Esiti per esercizio")[1];
   assert.ok(esiti.indexOf("| loc |") < esiti.indexOf("| api1 |"));
   assert.doesNotMatch(componiRiepilogo([], misto), /### Esiti per esercizio/);
+});
+
+// ---- ragionamento, provider e ripetizioni ----
+
+test("statistiche e formatoIntervallo: media, minimo e massimo ignorando i null", () => {
+  assert.deepEqual(statistiche([3, null, 1, 5, NaN]), { media: 3, min: 1, max: 5, n: 3 });
+  assert.equal(statistiche([null, undefined]), null);
+  assert.equal(formatoIntervallo([1000, null, 2500], 0), "1750 (1000–2500)");
+  assert.equal(formatoIntervallo([12.25, 3.5], 1), "7,9 (3,5–12,3)");
+  assert.equal(formatoIntervallo([], 1), "–");
+});
+
+// Un giro di una serie: esiti, token, tempo, finish_reason e provider per esercizio.
+type Giro = Record<string, { s: boolean; tok?: number | null; ms?: number | null; fr?: string; p?: string }>;
+const giro = (modello: string, data: string, serie: { id: string; giro: number; giri: number } | undefined, es: Giro, completo = true) => {
+  const comune = { modello, data, avvio: { tipo: "api" }, confronto: misto };
+  return leggiEsecuzione(
+    [
+      ...Object.entries(es).map(([n, x]) => ({
+        tipo: "esercizio",
+        esercizio: n,
+        ...riga({ superato: x.s, formato: misto.formati![n], token_uscita: x.tok ?? 40, totale_ms: x.ms ?? 5000, finish_reason: x.fr ?? "stop" }),
+        ...(x.p ? { provider: x.p } : {}),
+        ...comune,
+      })),
+      { tipo: "fine", riassunto: { completo }, ...comune, ...(serie ? { serie } : {}) },
+    ],
+    predefinito,
+  )!;
+};
+
+test("leggiEsecuzione: serie e provider letti; nei file vecchi null", () => {
+  const g = giro("m", "2026-11-25T10-00-00", { id: "s1", giro: 2, giri: 3 }, { "01-a": { s: true, p: "Novita" } });
+  assert.deepEqual(g.serie, { id: "s1", giro: 2, giri: 3 });
+  assert.equal(g.dettagli["01-a"].provider, "Novita");
+  const vecchio = esec({});
+  assert.equal(vecchio.serie, null);
+  assert.equal(vecchio.dettagli["01-a"].provider, null);
+  assert.equal(vecchio.dettagli["01-a"].token_uscita, 40);
+});
+
+test("ultimaSeriePerModello: tutti i giri dell'ultima serie, in ordine; senza serie l'ultima esecuzione", () => {
+  const s = (id: string, g: number, data: string) => giro("a", data, { id, giro: g, giri: 2 }, { "01-a": { s: true } });
+  const gruppi = ultimaSeriePerModello([
+    s("vecchia", 1, "2026-11-24T10-00-00"),
+    s("nuova", 2, "2026-11-25T10-05-00"),
+    s("nuova", 1, "2026-11-25T10-00-00"),
+    giro("b", "2026-11-24T10-00-00", undefined, { "01-a": { s: true } }),
+    giro("b", "2026-11-25T10-00-00", undefined, { "01-a": { s: false } }),
+  ]);
+  const a = gruppi.find((x) => x[0].modello === "a")!;
+  assert.deepEqual(a.map((e) => e.data), ["2026-11-25T10-00-00", "2026-11-25T10-05-00"]);
+  const b = gruppi.find((x) => x[0].modello === "b")!;
+  assert.deepEqual(b.map((e) => e.data), ["2026-11-25T10-00-00"]);
+});
+
+const serie2 = () => [
+  giro("glm", "2026-11-25T10-00-00", { id: "s", giro: 1, giri: 2 }, {
+    "01-a": { s: true, tok: 1000, ms: 10000, p: "Novita" },
+    "02-b": { s: false, tok: 32768, ms: 90000, fr: "length", p: "Novita" },
+    "15-c": { s: true, tok: 500, ms: 4000, p: "Chutes" },
+    "17-d": { s: true, tok: 200, ms: 2000, p: "Novita" },
+  }),
+  giro("glm", "2026-11-25T10-05-00", { id: "s", giro: 2, giri: 2 }, {
+    "01-a": { s: true, tok: 3000, ms: 30000, p: "Chutes" },
+    "02-b": { s: true, tok: 8000, ms: 50000, p: "Novita" },
+    "15-c": { s: false, tok: 700, ms: 6000, p: "Chutes" },
+  }, false),
+];
+
+test("superatiNeiGiri e providerNeiGiri: conteggi sui giri che hanno eseguito l'esercizio", () => {
+  const s = serie2();
+  assert.equal(superatiNeiGiri(s, "01-a"), "2/2");
+  assert.equal(superatiNeiGiri(s, "02-b"), "1/2");
+  assert.equal(superatiNeiGiri(s, "17-d"), "1/1");
+  assert.equal(superatiNeiGiri([s[1]], "17-d"), "–");
+  assert.equal(providerNeiGiri(s, "02-b"), "Novita ×2");
+  assert.equal(providerNeiGiri(s, "01-a"), "Chutes ×1, Novita ×1");
+  assert.equal(providerNeiGiri([s[0]], "01-a"), "Novita");
+  assert.equal(providerNeiGiri([esec({})], "01-a"), "–");
+});
+
+test("tabellaEsiti: una serie mostra k/N per esercizio e per categoria su previsti × giri", () => {
+  const t = tabellaEsiti([serie2(), [esecMista("solo", { "01-a": true })]], misto);
+  const righe = t.split("\n");
+  assert.match(righe[0], /Con più giri, k\/N: superato k volte su N\./);
+  assert.equal(righe[4], "| glm (2 giri) | 3/4 | 2/2 | 1/2 | 2/4 | 1/2 | 1/1 |");
+  assert.equal(righe[5], "| solo | 1/2 | ✓ | – | 0/2 | – | – |");
+});
+
+test("tabellaProvider: solo i modelli con provider", () => {
+  const t = tabellaProvider([serie2(), [esecMista("senza", { "01-a": true })]], misto);
+  assert.equal(t, "| Modello | 01 | 02 | 15 | 17 |\n|---|---|---|---|---|\n| glm (2 giri) | Chutes ×1, Novita ×1 | Novita ×2 | Chutes ×2 | Novita ×1 |\n");
+  assert.equal(tabellaProvider([[esecMista("senza", { "01-a": true })]], misto), "");
+});
+
+test("tabellaRipetizioni: superati, troncati, token e tempo come media (min–max)", () => {
+  const righe = tabellaRipetizioni(serie2(), misto).split("\n");
+  assert.equal(righe[0], "#### glm: 2 giri (2026-11-25T10-00-00 … 2026-11-25T10-05-00)");
+  assert.equal(righe[2], "Superati per giro: 3/4, 2/4 (incompleto).");
+  assert.equal(righe[6], "| 01-a | 2/2 | 0 | 2000 (1000–3000) | 20,0 (10,0–30,0) |");
+  assert.equal(righe[7], "| 02-b | 1/2 | 1 | 20384 (8000–32768) | 70,0 (50,0–90,0) |");
+  assert.equal(righe[9], "| 17-d | 1/1 | 0 | 200 (200–200) | 2,0 (2,0–2,0) |");
+});
+
+test("componiRiepilogo: con una serie la classifica mostra l'ultimo giro, poi provider e ripetizioni", () => {
+  const testo = componiRiepilogo([...serie2(), esecMista("altro", { "01-a": true })], misto);
+  assert.match(testo, /^\| glm \| 2026-11-25T10-05-00 \| 2\/4 \(incompleto\) .*giro 2 di 2: tutti i giri in "Ripetizioni"/m);
+  assert.doesNotMatch(testo, /^\| glm \| 2026-11-25T10-00-00 \|/m);
+  assert.match(testo, /^\| glm \(2 giri\) \| 3\/4 \|/m);
+  assert.match(testo, /#### Provider per esercizio\n\n\| Modello \| 01 \| 02 \| 15 \| 17 \|/);
+  assert.match(testo, /### Ripetizioni\n\n#### glm: 2 giri/);
+  assert.doesNotMatch(testo, /#### altro:/);
+  const altre = componiRiepilogo(serie2(), confronto()).split("## Altre impronte")[1];
+  assert.match(altre, /#### Provider per esercizio\n[\s\S]*#### Ripetizioni\n\n##### glm: 2 giri/);
+    const senza = componiRiepilogo([esecMista("altro", { "01-a": true })], misto);
+  assert.doesNotMatch(senza, /Provider per esercizio|### Ripetizioni/);
 });

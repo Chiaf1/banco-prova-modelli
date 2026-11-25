@@ -12,6 +12,7 @@ Nessuna dipendenza e nessun `npm install`: Node (≥ 23.6) esegue direttamente i
 npm test                                          # test del banco (test/bench.test.ts)
 npm run bench:verifica                            # riferimento.* passa, firma.ts e sbagliata-*.* falliscono
 npm run bench -- --model qwen3.5:4b --esercizi 2  # prova veloce su un modello
+npm run bench -- --model glm-5.3-flash --esercizi 2 --ripetizioni 2  # N giri dello stesso modello (stessa `serie`)
 npm run bench:riepilogo                           # rigenera risultati/riepilogo.md dai .jsonl, senza chiamare modelli
 node --test --test-name-pattern="whIntegrati" test/bench.test.ts
 ```
@@ -24,7 +25,7 @@ node --test --test-name-pattern="whIntegrati" test/bench.test.ts
 - `bench/api.ts`: chiamata in streaming a un endpoint compatibile OpenAI.
 - `bench/banco.ts`: il programma; `energia.ts` (nvidia-smi), `sistema.ts` (hardware, Ollama), `esegui.ts` (test in sandbox), `prompt.ts` (testi mandati ai modelli), `verifica.ts` (`npm run bench:verifica`: le risposte giuste scritte a mano passano, le sbagliate falliscono).
 - `esercizi/NN-nome/`: `esercizio.json` (`{ "formato": "codice" | "json" | "testo" }`, obbligatorio), `consegna.md`, `soluzione.test.ts` e le risposte scritte a mano. Codice: `firma.ts` e `riferimento.ts`. Json e testo: `riferimento.json`/`.txt` e almeno una `sbagliata-*.json`/`.txt`, ognuna con una regola violata. Il test legge la risposta da `process.env.SOLUZIONE`. I loro test non entrano in `npm test`.
-- `risultati/`: scritti dal banco, non modificarli a mano. Il riepilogo si rifà con `npm run bench:riepilogo`.
+- `risultati/`: scritti dal banco, non modificarli a mano. In `risultati/codice/<run>/` per ogni esercizio `NN.risposta.md`, il blocco estratto e, quando il modello lo manda, `NN.ragionamento.md` (anche se la risposta è troncata). Con `--ripetizioni N` ogni giro ha il suo `.jsonl` con lo stesso `serie.id`. Il riepilogo si rifà con `npm run bench:riepilogo`.
 - `note/`: scheda del PC di prova (il banco la confronta a ogni esecuzione) e messa a punto di Inkling.
 
 ## Regole
