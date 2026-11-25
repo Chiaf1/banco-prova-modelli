@@ -41,7 +41,7 @@ Ogni esercizio dichiara in `esercizio.json` il formato della risposta: `codice`,
 
 Ogni esercizio ha risposte scritte a mano: `riferimento.ts` e `firma.ts` per il codice, `riferimento.json`/`.txt` e una o più `sbagliata-*.json`/`.txt` per gli altri. `npm run bench:verifica` controlla che la giusta passi e ogni sbagliata fallisca.
 
-Parametri uguali per tutti: `temperature` 0, `max_tokens` 8192, `reasoning_effort` "medium".
+Parametri uguali per tutti: `temperature` 0, `max_tokens` 32768, `reasoning_effort` "medium".
 
 Misure per esercizio: tempo totale, tempo al primo token (ragionamento compreso), token in ingresso e in uscita dall'usage dell'API, token/s = token in uscita / (totale − primo token), energia della GPU (nvidia-smi ogni 500 ms, integrata sulla chiamata), superato sì/no. Per ogni modello anche la potenza a riposo e la velocità di lettura di un prompt di circa 4000 token.
 

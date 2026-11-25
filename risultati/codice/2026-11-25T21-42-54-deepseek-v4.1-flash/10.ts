@@ -1,0 +1,85 @@
+export function valuta(espressione: string): number {
+  type Token =
+    | { type: "num"; value: number }
+    | { type: "op" | "lp" | "rp"; value: string };
+
+  const tokens: Token[] = [];
+  let i = 0;
+  while (i < espressione.length) {
+    const c = espressione[i];
+    if (c === " " || c === "\t" || c === "\n" || c === "\r") {
+      i++;
+      continue;
+    }
+    if (c === "+" || c === "-" || c === "*" || c === "/" || c === "(" || c === ")") {
+      const t: "op" | "lp" | "rp" = c === "(" ? "lp" : c === ")" ? "rp" : "op";
+      tokens.push({ type: t, value: c });
+      i++;
+      continue;
+    }
+    const rest = espressione.slice(i);
+    const m = rest.match(/^(?:\d+\.?\d*|\.\d+)/);
+    if (!m) throw new SyntaxError("Carattere non valido");
+    tokens.push({ type: "num", value: Number(m[0]) });
+    i += m[0].length;
+  }
+
+  let pos = 0;
+  const peek = (): Token | undefined => tokens[pos];
+  const consume = (): Token => tokens[pos++];
+  const atOp = (ops: string[]): boolean => {
+    const t = peek();
+    return !!t && t.type === "op" && ops.includes(t.value);
+  };
+
+  function parseExpr(): number {
+    let left = parseTerm();
+    while (atOp(["+", "-"])) {
+      const op = consume().value;
+      const right = parseTerm();
+      left = op === "+" ? left + right : left - right;
+    }
+    return left;
+  }
+
+  function parseTerm(): number {
+    let left = parseUnary();
+    while (atOp(["*", "/"])) {
+      const op = consume().value;
+      const right = parseUnary();
+      left = op === "*" ? left * right : left / right;
+    }
+    return left;
+  }
+
+  function parseUnary(): number {
+    let sign = 1;
+    while (atOp(["+", "-"])) {
+      if (consume().value === "-") sign = -sign;
+    }
+    return sign * parsePrimary();
+  }
+
+  function parsePrimary(): number {
+    const t = peek();
+    if (!t) throw new SyntaxError("Espressione incompleta");
+    if (t.type === "num") {
+      consume();
+      return t.value;
+    }
+    if (t.type === "lp") {
+      consume();
+      const v = parseExpr();
+      const close = peek();
+      if (!close || close.type !== "rp") throw new SyntaxError("Parentesi non bilanciate");
+      consume();
+      return v;
+    }
+    throw new SyntaxError("Token inatteso");
+  }
+
+  if (tokens.length === 0) throw new SyntaxError("Espressione vuota");
+  const result = parseExpr();
+  if (pos !== tokens.length) throw new SyntaxError("Token inatteso");
+  return result;
+}
